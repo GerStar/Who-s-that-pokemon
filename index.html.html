@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pokémon Adivina Quién - Multijugador</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+        .pokemon-card { transition: all 0.2s ease-in-out; }
+        .discarded { filter: grayscale(100%) opacity(0.35); transform: scale(0.96); }
+    </style>
+</head>
+<body class="min-h-screen text-gray-800 flex flex-col justify-between">
+
+    <!-- Header -->
+    <header class="bg-red-600 text-white shadow-md sticky top-0 z-30">
+        <div class="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <span class="text-2xl">🔴</span>
+                <h1 class="text-lg sm:text-xl font-black tracking-wider uppercase">Pokémon Adivina Quién</h1>
+            </div>
+            <div id="room-badge" class="hidden text-xs sm:text-sm bg-red-700 px-3 py-1.5 rounded-xl font-medium shadow-inner flex items-center space-x-2">
+                <span>Sala: <strong id="display-room-code" class="text-yellow-300"></strong></span>
+                <span class="text-red-300">|</span>
+                <span id="connection-status" class="text-emerald-300 font-semibold">Conectado</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-6xl w-full mx-auto px-4 py-6 flex flex-col">
+        
+        <!-- ================= VIEW 1: LOBBY & ROOM SETUP ================= -->
+        <div id="view-lobby" class="flex flex-col items-center justify-center flex-grow my-auto">
+            <div class="bg-white p-6 sm:p-8 rounded-3xl shadow-xl max-w-md w-full border border-gray-100 text-center">
+                <div class="w-16 h-16 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center mx-auto mb-4 text-3xl shadow-sm">
+                    🎮
+                </div>
+                <h2 class="text-2xl font-extrabold text-gray-900 mb-2">Modo Multijugador</h2>
+                <p class="text-gray-600 text-sm mb-6">Juega con un amigo en tiempo real desde sus respectivos celulares.</p>
+                
+                <div class="space-y-4">
+                    <button onclick="createRoom()" class="w-full bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-bold py-3.5 px-6 rounded-2xl shadow-lg transition transform active:scale-95 flex items-center justify-center space-x-2">
+                        <span>✨ Crear Nueva Sala</span>
+                    </button>
+                    <div class="relative flex py-2 items-center">
+                        <div class="flex-grow border-t border-gray-200"></div>
+                        <span class="flex-shrink mx-4 text-gray-400 text-xs font-bold uppercase">o unirse a sala</span>
+                        <div class="flex-grow border-t border-gray-200"></div>
+                    </div>
+                    <div class="flex space-x-2">
+                        <input type="text" id="input-room-code" placeholder="Código de sala (ej. POKE42)" class="flex-grow uppercase bg-gray-50 border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 font-bold tracking-widest text-center">
+                        <button onclick="joinRoom()" class="bg-gray-900 hover:bg-black text-white font-semibold px-5 py-3 rounded-xl transition text-sm">Entrar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= VIEW 2: MANUAL SECRET SELECTION ================= -->
+        <div id="view-selection" class="hidden flex flex-col flex-grow">
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-200 mb-4 text-center">
+                <h2 class="text-xl font-black text-gray-900">Elige tu Pokémon Secreto</h2>
+                <p class="text-sm text-gray-600">Selecciona de la grilla inferior el Pokémon que tu oponente tendrá que adivinar.</p>
+            </div>
+            
+            <div class="mb-3 flex justify-between items-center px-1">
+                <span class="text-xs font-bold text-gray-500 uppercase">Generaciones 1 a 9 (1025 Pokémon)</span>
+                <input type="text" id="search-select" oninput="filterSelectionGrid()" placeholder="Buscar Pokémon..." class="bg-white border border-gray-200 px-3 py-1.5 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 w-48">
+            </div>
+
+            <div id="selection-grid" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3 overflow-y-auto max-h-[70vh] p-1">
+                <!-- Populated via JS -->
+            </div>
+        </div>
+
+        <!-- ================= VIEW 3: WAITING FOR RIVAL ================= -->
+        <div id="view-waiting" class="hidden flex flex-col items-center justify-center flex-grow my-auto text-center">
+            <div class="bg-white p-8 rounded-3xl shadow-xl max-w-md w-full border border-gray-100">
+                <div class="w-16 h-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl animate-spin">
+                    ⏳
+                </div>
+                <h3 class="text-xl font-bold text-gray-900 mb-2">Esperando al oponente...</h3>
+                <p class="text-sm text-gray-600 mb-4">Has elegido tu Pokémon secreto. Esperando a que tu amigo también elija el suyo para comenzar la partida.</p>
+                <div class="bg-gray-50 p-4 rounded-xl border border-gray-200 inline-block">
+                    <p class="text-xs text-gray-500 uppercase font-semibold">Código para compartir:</p>
+                    <p id="waiting-room-code" class="text-2xl font-black tracking-widest text-red-600 mt-1"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= VIEW 4: MAIN GAME BOARD ================= -->
+        <div id="view-board" class="hidden flex flex-col flex-grow">
+            <!-- Toolbar -->
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-200 mb-6 flex flex-wrap items-center justify-between gap-4">
+                <div class="flex items-center space-x-4">
+                    <div class="bg-red-50 p-2.5 rounded-xl border border-red-100 flex items-center space-x-3">
+                        <img id="my-secret-img" src="" alt="Secret" class="w-10 h-10 object-contain">
+                        <div>
+                            <p class="text-[10px] text-gray-500 font-bold uppercase">Tu Pokémon Secreto</p>
+                            <p id="my-secret-name" class="font-bold text-red-600 capitalize text-sm"></p>
+                        </div>
+                    </div>
+                    <div class="bg-blue-50 p-2.5 rounded-xl border border-blue-100 flex items-center space-x-3">
+                        <img id="rival-secret-img" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/25.png" alt="Rival Secret" class="w-10 h-10 object-contain filter blur-sm">
+                        <div>
+                            <p class="text-[10px] text-gray-500 font-bold uppercase">Rival Secreto</p>
+                            <p class="font-bold text-blue-600 capitalize text-sm">??? (Adivínalo)</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex items-center space-x-2 w-full sm:w-auto">
+                    <button onclick="openGuessModal()" class="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-4 py-2.5 rounded-xl shadow-md transition flex items-center justify-center space-x-1.5 text-sm">
+                        <span>🏆</span>
+                        <span>¡Arriesgar / Adivinar!</span>
+                    </button>
+                    <button onclick="resetBoard()" class="flex-1 sm:flex-none bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold px-4 py-2.5 rounded-xl border border-gray-300 transition text-sm">
+                        🔄 Reiniciar Tablero
+                    </button>
+                </div>
+            </div>
+
+            <!-- Grid Header -->
+            <div class="mb-4 flex flex-wrap justify-between items-center gap-2 px-1">
+                <h3 class="text-sm font-bold text-gray-500 uppercase tracking-wide">Tablero de Descarte (<span id="remaining-count">1025</span> disponibles)</h3>
+                <input type="text" id="search-board" oninput="filterBoardGrid()" placeholder="Filtrar tablero..." class="bg-white border border-gray-200 px-3 py-1.5 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 w-48">
+            </div>
+
+            <!-- Grid Container -->
+            <div id="pokemon-grid" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
+                <!-- Dynamically populated -->
+            </div>
+        </div>
+
+    </main>
+
+    <!-- GUESS MODAL -->
+    <div id="guess-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-gray-100 flex flex-col max-h-[90vh]">
+            <div class="flex justify-between items-center mb-3">
+                <h3 class="text-xl font-bold text-gray-900">¿Cuál es el Pokémon de tu oponente?</h3>
+                <button onclick="closeGuessModal()" class="text-gray-400 hover:text-gray-600 font-bold text-lg">&times;</button>
+            </div>
+            <p class="text-sm text-gray-600 mb-3">Selecciona tu apuesta final:</p>
+            <input type="text" id="search-guess" oninput="filterGuessGrid()" placeholder="Buscar para arriesgar..." class="bg-gray-50 border border-gray-200 px-3 py-2 rounded-xl text-sm mb-3 w-full">
+            
+            <div id="guess-grid" class="grid grid-cols-3 sm:grid-cols-4 gap-2.5 overflow-y-auto p-1 max-h-64 border rounded-xl bg-gray-50 mb-4">
+                <!-- Populate list -->
+            </div>
+            <button onclick="closeGuessModal()" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-3 rounded-xl transition">Cancelar</button>
+        </div>
+    </div>
+
+    <!-- RESULT MODAL (VICTORY / DEFEAT) -->
+    <div id="result-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-md w-full p-8 shadow-2xl text-center border border-gray-100">
+            <div id="result-icon" class="w-20 h-20 bg-amber-100 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-4 text-4xl shadow-md">
+                👑
+            </div>
+            <h2 id="result-title" class="text-3xl font-black text-gray-900 mb-2">¡Victoria!</h2>
+            <p id="result-message" class="text-gray-600 mb-6 text-sm sm:text-base">Has adivinado correctamente el Pokémon de tu oponente.</p>
+            <button onclick="location.reload()" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3.5 px-6 rounded-xl shadow-lg transition">
+                Nueva Partida 🎮
+            </button>
+        </div>
+    </div>
+
+    <!-- Firebase SDK Imports -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Global Firebase configuration and variables provided by environment
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'pokemon-guess-who-multi-v1';
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const initialToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        let app, db, auth, userId = null;
+        let currentRoomCode = null;
+        let isPlayer1 = false;
+        let unsubRoom = null;
+
+        // Complete 1-1025 Pokémon Master List generation
+        const allPokemon = [];
+        // Names list for standard Gen 1-9 fallback or sprite mapping. We map IDs 1 to 1025.
+        // To ensure instant performance and reliable loading, we generate standard data array:
+        for (let i = 1; i <= 1025; i++) {
+            allPokemon.push({
+                id: i,
+                name: `Pokémon #${i}`,
+                sprite: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${i}.png`
+            });
+        }
+
+        // Fetch real names if desired or use clean format. Let's load official names asynchronously for popular ones or generate clean fallback.
+        // Actually, let's fetch primary names quickly or map them cleanly. Let's fetch a lightweight JSON or list of names.
+        async function loadPokemonNames() {
+            try {
+                const res = await fetch('https://pokeapi.co/api/v2/pokemon?limit=1025');
+                const data = await res.json();
+                data.results.forEach((p, index) => {
+                    const id = index + 1;
+                    if (allPokemon[index]) {
+                        // Capitalize name nicely
+                        allPokemon[index].name = p.name.charAt(0).toUpperCase() + p.name.slice(1).replace(/-/g, ' ');
+                    }
+                });
+                renderSelectionGrid(allPokemon);
+                renderBoardGrid(allPokemon);
+                renderGuessGrid(allPokemon);
+            } catch (e) {
+                console.warn('Using offline fallback names', e);
+                renderSelectionGrid(allPokemon);
+                renderBoardGrid(allPokemon);
+                renderGuessGrid(allPokemon);
+            }
+        }
+
+        let discardedStatus = {};
+        let mySecret = null;
+        let rivalSecret = null;
+
+        window.onload = async function() {
+            allPokemon.forEach(p => discardedStatus[p.id] = false);
+            
+            // Initialize Firebase
+            try {
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                if (initialToken) {
+                    await signInWithCustomToken(auth, initialToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+                userId = auth.currentUser?.uid || crypto.randomUUID();
+            } catch (e) {
+                console.error("Firebase init error:", e);
+            }
+
+            loadPokemonNames();
+        };
+
+        // Room Creation
+        window.createRoom = async function() {
+            if (!db) { alert("Error de conexión con base de datos"); return; }
+            const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+            currentRoomCode = code;
+            isPlayer1 = true;
+
+            const roomRef = doc(db, 'artifacts', appId, 'public', 'data', `room_${code}`);
+            await setDoc(roomRef, {
+                code: code,
+                p1Id: userId,
+                p2Id: null,
+                p1Secret: null,
+                p2Secret: null,
+                status: 'waiting', // waiting, selecting, playing, finished
+                winner: null
+            });
+
+            document.getElementById('display-room-code').innerText = code;
+            document.getElementById('waiting-room-code').innerText = code;
+            document.getElementById('room-badge').classList.remove('hidden');
+            
+            switchView('view-selection');
+            listenToRoom(code);
+        };
+
+        // Join Room
+        window.joinRoom = async function() {
+            const code = document.getElementById('input-room-code').value.trim().toUpperCase();
+            if (!code) { alert("Ingresa un código de sala válido"); return; }
+            if (!db) { alert("Error de conexión"); return; }
+
+            const roomRef = doc(db, 'artifacts', appId, 'public', 'data', `room_${code}`);
+            const snap = await getDoc(roomRef);
+
+            if (!snap.exists()) {
+                alert("La sala no existe o ha expirado.");
+                return;
+            }
+
+            const data = snap.data();
+            currentRoomCode = code;
+            isPlayer1 = false;
+
+            if (!data.p2Id && data.p1Id !== userId) {
+                await updateDoc(roomRef, { p2Id: userId });
+            }
+
+            document.getElementById('display-room-code').innerText = code;
+            document.getElementById('room-badge').classList.remove('hidden');
+
+            switchView('view-selection');
+            listenToRoom(code);
+        };
+
+        // Listen to Room Changes in Realtime
+        function listenToRoom(code) {
+            const roomRef = doc(db, 'artifacts', appId, 'public', 'data', `room_${code}`);
+            if (unsubRoom) unsubRoom();
+
+            unsubRoom = onSnapshot(roomRef, (docSnap) => {
+                if (!docSnap.exists()) return;
+                const data = docSnap.data();
+
+                // Check if both players have chosen secret
+                if (data.status === 'playing' || (data.p1Secret && data.p2Secret)) {
+                    rivalSecret = isPlayer1 ? data.p2Secret : data.p1Secret;
+                    if (rivalSecret) {
+                        document.getElementById('rival-secret-img').src = rivalSecret.sprite;
+                    }
+                    if (document.getElementById('view-waiting').classList.contains('hidden') === false && mySecret) {
+                        switchView('view-board');
+                    }
+                }
+
+                if (data.winner) {
+                    showResultModal(data.winner === userId);
+                }
+            }, (error) => {
+                console.error("Snapshot error:", error);
+            });
+        }
+
+        // Select Secret Pokémon
+        window.selectMySecret = async function(pokemon) {
+            mySecret = pokemon;
+            document.getElementById('my-secret-img').src = pokemon.sprite;
+            document.getElementById('my-secret-name').innerText = pokemon.name;
+
+            // Update room in Firestore
+            const roomRef = doc(db, 'artifacts', appId, 'public', 'data', `room_${currentRoomCode}`);
+            const snap = await getDoc(roomRef);
+            if (snap.exists()) {
+                const data = snap.data();
+                const updateData = {};
+                if (isPlayer1) updateData.p1Secret = pokemon;
+                else updateData.p2Secret = pokemon;
+
+                if ((isPlayer1 && data.p2Secret) || (!isPlayer1 && data.p1Secret)) {
+                    updateData.status = 'playing';
+                }
+
+                await updateDoc(roomRef, updateData);
+            }
+
+            // Check if rival has chosen already
+            const snapCheck = await getDoc(roomRef);
+            const freshData = snapCheck.data();
+            const rivalHasChosen = isPlayer1 ? freshData.p2Secret : freshData.p1Secret;
+
+            if (rivalHasChosen) {
+                rivalSecret = rivalHasChosen;
+                document.getElementById('rival-secret-img').src = rivalSecret.sprite;
+                switchView('view-board');
+            } else {
+                switchView('view-waiting');
+            }
+        };
+
+        // Make Final Guess
+        window.makeGuess = async function(pokemon) {
+            closeGuessModal();
+            if (!rivalSecret) return;
+
+            const isCorrect = pokemon.id === rivalSecret.id;
+            const roomRef = doc(db, 'artifacts', appId, 'public', 'data', `room_${currentRoomCode}`);
+
+            if (isCorrect) {
+                await updateDoc(roomRef, { winner: userId });
+                showResultModal(true);
+            } else {
+                alert(`¡Incorrecto! ${pokemon.name} no es el Pokémon de tu oponente.`);
+            }
+        };
+
+        function showResultModal(won) {
+            const modal = document.getElementById('result-modal');
+            const icon = document.getElementById('result-icon');
+            const title = document.getElementById('result-title');
+            const msg = document.getElementById('result-message');
+
+            if (won) {
+                icon.innerHTML = "👑";
+                icon.className = "w-20 h-20 bg-amber-100 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-4 text-4xl shadow-md animate-bounce";
+                title.innerText = "¡Victoria Épica!";
+                msg.innerText = "¡Has adivinado correctamente el Pokémon de tu oponente antes que nadie!";
+            } else {
+                icon.innerHTML = "💀";
+                icon.className = "w-20 h-20 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 text-4xl shadow-md";
+                title.innerText = "Derrota";
+                msg.innerText = "Tu oponente adivino primero tu Pokémon secreto.";
+            }
+            modal.classList.remove('hidden');
+        }
+
+        // View Switcher
+        function switchView(viewId) {
+            ['view-lobby', 'view-selection', 'view-waiting', 'view-board'].forEach(id => {
+                document.getElementById(id).classList.add('hidden');
+            });
+            document.getElementById(viewId).classList.remove('hidden');
+        }
+
+        // Render Grids
+        function renderSelectionGrid(list) {
+            const grid = document.getElementById('selection-grid');
+            grid.innerHTML = '';
+            list.forEach(p => {
+                const card = document.createElement('div');
+                card.className = "bg-white p-3 rounded-2xl shadow-sm border border-gray-200 flex flex-col items-center justify-between cursor-pointer hover:border-red-400 hover:shadow-md transition select-none";
+                card.onclick = () => selectMySecret(p);
+                card.innerHTML = `
+                    <span class="text-[10px] font-bold text-gray-400 self-end">#${p.id}</span>
+                    <div class="w-20 h-20 my-1 flex items-center justify-center">
+                        <img src="${p.sprite}" alt="${p.name}" class="w-full h-full object-contain pointer-events-none" onerror="this.src='https://placehold.co/80x80/f3f4f6/9ca3af?text=PKMN'">
+                    </div>
+                    <span class="font-bold text-xs capitalize text-gray-800 text-center truncate w-full">${p.name}</span>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function renderBoardGrid(list) {
+            const grid = document.getElementById('pokemon-grid');
+            grid.innerHTML = '';
+            let remaining = 0;
+
+            list.forEach(p => {
+                const isDiscarded = discardedStatus[p.id];
+                if (!isDiscarded) remaining++;
+
+                const card = document.createElement('div');
+                card.className = `pokemon-card bg-white p-3 rounded-2xl shadow-sm border border-gray-200 flex flex-col items-center justify-between cursor-pointer select-none relative overflow-hidden ${isDiscarded ? 'discarded bg-gray-50' : 'hover:shadow-md hover:border-red-200'}`;
+                card.onclick = () => {
+                    discardedStatus[p.id] = !discardedStatus[p.id];
+                    renderBoardGrid(allPokemon);
+                };
+
+                card.innerHTML = `
+                    <span class="absolute top-2 right-2 text-[10px] font-bold text-gray-400">#${p.id}</span>
+                    <div class="w-20 h-20 my-2 flex items-center justify-center">
+                        <img src="${p.sprite}" alt="${p.name}" class="w-full h-full object-contain pointer-events-none" onerror="this.src='https://placehold.co/80x80/f3f4f6/9ca3af?text=PKMN'">
+                    </div>
+                    <span class="font-bold text-xs capitalize text-gray-800 truncate w-full text-center">${p.name}</span>
+                `;
+                grid.appendChild(card);
+            });
+            document.getElementById('remaining-count').innerText = remaining;
+        }
+
+        function renderGuessGrid(list) {
+            const grid = document.getElementById('guess-grid');
+            grid.innerHTML = '';
+            list.forEach(p => {
+                const item = document.createElement('div');
+                item.className = 'bg-white p-2 rounded-xl border border-gray-200 flex flex-col items-center justify-center cursor-pointer hover:bg-red-50 hover:border-red-300 transition shadow-xs';
+                item.onclick = () => makeGuess(p);
+                item.innerHTML = `
+                    <img src="${p.sprite}" alt="${p.name}" class="w-12 h-12 object-contain pointer-events-none mb-1" onerror="this.src='https://placehold.co/48x48/f3f4f6/9ca3af?text=PKMN'">
+                    <span class="text-[11px] font-semibold capitalize text-gray-700 truncate w-full text-center">${p.name}</span>
+                `;
+                grid.appendChild(item);
+            });
+        }
+
+        // Filters
+        window.filterSelectionGrid = function() {
+            const query = document.getElementById('search-select').value.toLowerCase();
+            const filtered = allPokemon.filter(p => p.name.toLowerCase().includes(query) || p.id.toString() === query);
+            renderSelectionGrid(filtered);
+        };
+
+        window.filterBoardGrid = function() {
+            const query = document.getElementById('search-board').value.toLowerCase();
+            const filtered = allPokemon.filter(p => p.name.toLowerCase().includes(query) || p.id.toString() === query);
+            renderBoardGrid(filtered);
+        };
+
+        window.filterGuessGrid = function() {
+            const query = document.getElementById('search-guess').value.toLowerCase();
+            const filtered = allPokemon.filter(p => p.name.toLowerCase().includes(query) || p.id.toString() === query);
+            renderGuessGrid(filtered);
+        };
+
+        window.openGuessModal = function() {
+            renderGuessGrid(allPokemon);
+            document.getElementById('guess-modal').classList.remove('hidden');
+        };
+
+        window.closeGuessModal = function() {
+            document.getElementById('guess-modal').classList.add('hidden');
+        };
+
+        window.resetBoard = function() {
+            allPokemon.forEach(p => discardedStatus[p.id] = false);
+            renderBoardGrid(allPokemon);
+        };
+    </script>
+</body>
+</html>
+```
+eof
+
+---
+
+### ¿Qué incluye esta versión mejorada?
+1. **Pokédex Completa (Gen 1 a Gen 9 - 1025 Pokémon):** Se cargan de manera dinámica y optimizada con buscador instantáneo para encontrar cualquier Pokémon fácilmente.
+2. **Selección Manual:** Ves la lista completa y haces clic en el Pokémon exacto que quieres que tu amigo adivine.
+3. **Multijugador en Red (Salas):** Un jugador crea una sala y le comparte el código al otro. Al unirse, ambos eligen su secreto y el juego sincroniza el estado en tiempo real. ¡Cada uno juega desde su propio celular!
+4. **Sistema de Arriesgar y Victoria:** Cuenta con un botón de adivinanza con buscador y alertas automáticas de victoria en tiempo real cuando aciertas el Pokémon del rival.
