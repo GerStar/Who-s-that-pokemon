@@ -3,512 +3,767 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pokémon Adivina Quién - Multijugador</title>
+    <title>Who's That Pokémon? - Versión Definitiva</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- PeerJS para conexión P2P -->
+    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
-        .pokemon-card { transition: all 0.2s ease-in-out; }
-        .discarded { filter: grayscale(100%) opacity(0.35); transform: scale(0.96); }
+        .pokemon-card {
+            transition: all 0.2s ease-in-out;
+        }
+        .pokemon-card.eliminated {
+            display: none !important;
+        }
     </style>
 </head>
-<body class="min-h-screen text-gray-800 flex flex-col justify-between">
+<body class="bg-slate-900 text-slate-100 min-h-screen font-sans flex flex-col items-center justify-between">
 
-    <!-- Header -->
-    <header class="bg-red-600 text-white shadow-md sticky top-0 z-30">
-        <div class="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
-            <div class="flex items-center space-x-2">
-                <span class="text-2xl">🔴</span>
-                <h1 class="text-lg sm:text-xl font-black tracking-wider uppercase">Pokémon Adivina Quién</h1>
+    <!-- HEADER CON LOGOTIPO Y POKÉBOLA -->
+    <header class="w-full bg-slate-950/80 backdrop-blur-md border-b border-red-600/40 shadow-xl py-3 px-6 flex justify-between items-center sticky top-0 z-40">
+        <div class="flex items-center gap-3">
+            <!-- Logotipo Pokébola Estilizada -->
+            <div class="relative w-10 h-10 bg-red-600 rounded-full border-2 border-slate-900 overflow-hidden flex flex-col shadow-[0_0_12px_rgba(239,68,68,0.6)]">
+                <div class="w-full h-1/2 bg-red-600"></div>
+                <div class="w-full h-1/2 bg-white"></div>
+                <!-- Línea divisoria central -->
+                <div class="absolute inset-x-0 top-1/2 -translate-y-1/2 h-1 bg-slate-900"></div>
+                <!-- Botón central de la Pokébola -->
+                <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3.5 h-3.5 bg-white border-2 border-slate-900 rounded-full shadow"></div>
             </div>
-            <div id="room-badge" class="hidden text-xs sm:text-sm bg-red-700 px-3 py-1.5 rounded-xl font-medium shadow-inner flex items-center space-x-2">
-                <span>Sala: <strong id="display-room-code" class="text-yellow-300"></strong></span>
-                <span class="text-red-300">|</span>
-                <span id="connection-status" class="text-emerald-300 font-semibold">Conectado</span>
+            <div>
+                <h1 class="text-xl md:text-2xl font-black tracking-wider uppercase text-transparent bg-clip-text bg-gradient-to-r from-red-500 via-amber-400 to-yellow-300 drop-shadow">
+                    Who's That Pokémon?
+                </h1>
+                <p class="text-[10px] text-slate-400 font-semibold tracking-wider uppercase">Edición Multijugador en Español</p>
             </div>
+        </div>
+        <div id="connection-status" class="text-xs bg-amber-500 text-slate-950 font-bold px-3 py-1 rounded-full shadow">
+            Desconectado
         </div>
     </header>
 
-    <main class="flex-grow max-w-6xl w-full mx-auto px-4 py-6 flex flex-col">
-        
-        <!-- ================= VIEW 1: LOBBY & ROOM SETUP ================= -->
-        <div id="view-lobby" class="flex flex-col items-center justify-center flex-grow my-auto">
-            <div class="bg-white p-6 sm:p-8 rounded-3xl shadow-xl max-w-md w-full border border-gray-100 text-center">
-                <div class="w-16 h-16 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center mx-auto mb-4 text-3xl shadow-sm">
-                    🎮
+    <!-- CONTENEDOR PRINCIPAL -->
+    <main class="w-full max-w-6xl p-4 flex-grow flex flex-col items-center justify-center">
+
+        <!-- VISTA 1: MENÚ PRINCIPAL Y SALAS -->
+        <div id="view-lobby" class="w-full max-w-lg bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-2xl space-y-6">
+            <div class="text-center space-y-2">
+                <h2 class="text-2xl font-bold text-red-400">Modo Multijugador</h2>
+                <p class="text-sm text-slate-400">Configura tu sala, selecciona las generaciones y juega con tus amigos.</p>
+            </div>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 mb-1">Tu Nombre de Jugador:</label>
+                    <input type="text" id="input-username" placeholder="Ej. Ash Ketchum" class="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-red-500 text-center font-bold">
                 </div>
-                <h2 class="text-2xl font-extrabold text-gray-900 mb-2">Modo Multijugador</h2>
-                <p class="text-gray-600 text-sm mb-6">Juega con un amigo en tiempo real desde sus respectivos celulares.</p>
+
+                <!-- SELECCIÓN DE GENERACIONES -->
+                <div class="space-y-2 bg-slate-900/60 p-3 rounded-xl border border-slate-700">
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs font-bold text-slate-300 uppercase">Generaciones a incluir:</span>
+                        <button onclick="toggleAllGenerations(true)" class="text-[10px] text-red-400 hover:underline">Marcar Todas</button>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2 text-xs" id="gen-checkboxes">
+                        <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" value="1" checked class="gen-cb accent-red-600"> Gen 1 (Kanto)</label>
+                        <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" value="2" checked class="gen-cb accent-red-600"> Gen 2 (Johto)</label>
+                        <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" value="3" checked class="gen-cb accent-red-600"> Gen 3 (Hoenn)</label>
+                        <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" value="4" checked class="gen-cb accent-red-600"> Gen 4 (Sinnoh)</label>
+                        <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" value="5" checked class="gen-cb accent-red-600"> Gen 5 (Unova)</label>
+                        <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" value="6" checked class="gen-cb accent-red-600"> Gen 6 (Kalos)</label>
+                        <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" value="7" checked class="gen-cb accent-red-600"> Gen 7 (Alola)</label>
+                        <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" value="8" checked class="gen-cb accent-red-600"> Gen 8 (Galar)</label>
+                        <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" value="9" checked class="gen-cb accent-red-600"> Gen 9 (Paldea)</label>
+                    </div>
+                </div>
+
+                <button onclick="createRoom()" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3 px-4 rounded-xl shadow-lg transition transform active:scale-95 flex items-center justify-center gap-2">
+                    ✨ Crear Nueva Sala
+                </button>
+
+                <div class="flex items-center my-2">
+                    <div class="flex-grow border-t border-slate-700"></div>
+                    <span class="px-3 text-xs text-slate-500 uppercase tracking-widest font-bold">O unirse a sala</span>
+                    <div class="flex-grow border-t border-slate-700"></div>
+                </div>
+
+                <div class="flex gap-2">
+                    <input type="text" id="input-room-code" placeholder="CÓDIGO (Ej. POKE12)" class="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-red-500 uppercase font-mono text-center">
+                    <button onclick="joinRoom()" class="bg-slate-700 hover:bg-slate-600 text-white font-bold px-5 py-2 rounded-lg transition">Entrar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- VISTA 2: SALA DE ESPERA (LOBBY) -->
+        <div id="view-waiting-room" class="w-full max-w-lg bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-2xl text-center space-y-6 hidden">
+            <div>
+                <h2 class="text-xl font-bold text-red-400">Sala de Espera</h2>
+                <p class="text-xs text-slate-400 mt-1">Comparte este código con tus amigos:</p>
+                <div id="display-room-code" class="text-3xl font-mono font-black text-amber-400 bg-slate-900 py-3 rounded-xl border border-slate-700 tracking-wider mt-2 select-all">-----</div>
+            </div>
+
+            <div class="space-y-2 text-left">
+                <h3 class="text-xs font-bold text-slate-400 uppercase">Jugadores Conectados (<span id="player-count">0</span>/10):</h3>
+                <ul id="players-list" class="bg-slate-900 rounded-xl p-3 space-y-2 max-h-40 overflow-y-auto border border-slate-700 text-sm"></ul>
+            </div>
+
+            <div id="host-controls" class="hidden">
+                <button onclick="startPokemonSelection()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-4 rounded-xl shadow-lg transition">
+                    🎮 Iniciar Selección de Pokémon
+                </button>
+            </div>
+            <div id="guest-waiting-msg" class="text-sm text-slate-400 italic">
+                Esperando a que el anfitrión inicie la partida...
+            </div>
+        </div>
+
+        <!-- VISTA 3: SELECCIÓN DE TU POKÉMON SECRETO -->
+        <div id="view-select-secret" class="w-full max-w-4xl bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-2xl space-y-4 hidden">
+            <div class="text-center space-y-1">
+                <h2 class="text-xl font-bold text-red-400">Elige tu Pokémon Secreto</h2>
+                <p class="text-xs text-slate-400">Haz clic en el Pokémon que tus rivales deberán adivinar:</p>
+                <input type="text" id="search-select-pokemon" placeholder="🔍 Buscar por nombre..." oninput="filterSecretSelection()" class="w-full max-w-md mt-2 px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:border-red-500">
+            </div>
+
+            <div id="secret-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 max-h-96 overflow-y-auto p-2 bg-slate-900 rounded-xl border border-slate-700"></div>
+        </div>
+
+        <!-- VISTA 4: TABLERO DE JUEGO PRINCIPAL -->
+        <div id="view-game-board" class="w-full max-w-6xl space-y-4 hidden">
+            <!-- Panel Superior -->
+            <div class="bg-slate-800 border border-slate-700 rounded-xl p-4 flex flex-wrap justify-between items-center gap-4 shadow-lg">
+                <div class="flex items-center gap-3">
+                    <span class="text-xs text-slate-400 uppercase font-bold">Tu Secreto:</span>
+                    <div id="my-secret-preview" class="flex items-center gap-2 bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-700"></div>
+                </div>
+
+                <div class="flex flex-wrap gap-2">
+                    <button onclick="resetBoard()" class="bg-slate-700 hover:bg-slate-600 text-xs font-bold px-3 py-2 rounded-lg transition">
+                        🔄 Habilitar Todo
+                    </button>
+                    <button onclick="openGuessModal()" class="bg-amber-600 hover:bg-amber-500 text-xs font-bold px-3 py-2 rounded-lg shadow transition">
+                        🎯 Arriesgar
+                    </button>
+                </div>
+            </div>
+
+            <!-- BOTONES DE DESCARTE RÁPIDO CON CONTORNO DINÁMICO AMARILLO -->
+            <div class="bg-slate-800 border border-slate-700 rounded-xl p-3 space-y-3 shadow">
+                <div class="flex justify-between items-center">
+                    <span class="text-xs font-bold text-slate-400 uppercase">Descarte Rápido por Atributos:</span>
+                    <span id="active-filters-indicator" class="text-[10px] text-amber-400 font-semibold hidden">Filtros activos aplicados</span>
+                </div>
                 
-                <div class="space-y-4">
-                    <button onclick="createRoom()" class="w-full bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-bold py-3.5 px-6 rounded-2xl shadow-lg transition transform active:scale-95 flex items-center justify-center space-x-2">
-                        <span>✨ Crear Nueva Sala</span>
-                    </button>
-                    <div class="relative flex py-2 items-center">
-                        <div class="flex-grow border-t border-gray-200"></div>
-                        <span class="flex-shrink mx-4 text-gray-400 text-xs font-bold uppercase">o unirse a sala</span>
-                        <div class="flex-grow border-t border-gray-200"></div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 text-xs">
+                    <!-- 1. Tipo -->
+                    <div id="container-filter-type" class="flex items-center gap-1 bg-slate-900 p-2 rounded-lg border border-slate-700 transition-colors">
+                        <select id="filter-type" class="bg-slate-800 border border-slate-700 px-2 py-1 rounded text-white flex-grow">
+                            <option value="">Tipo...</option>
+                            <option value="normal">Normal</option><option value="fire">Fuego</option><option value="water">Agua</option><option value="grass">Planta</option><option value="electric">Eléctrico</option><option value="ice">Hielo</option><option value="fighting">Lucha</option><option value="poison">Veneno</option><option value="ground">Tierra</option><option value="flying">Volador</option><option value="psychic">Psíquico</option><option value="bug">Bicho</option><option value="rock">Roca</option><option value="ghost">Fantasma</option><option value="dragon">Dragón</option><option value="steel">Acero</option><option value="fairy">Hada</option>
+                        </select>
+                        <button onclick="eliminateByType(true)" class="bg-red-900/60 hover:bg-red-800 text-red-200 px-2 py-1 rounded font-semibold" title="Descartar este tipo">❌</button>
+                        <button onclick="eliminateByType(false)" class="bg-emerald-900/60 hover:bg-emerald-800 text-emerald-200 px-2 py-1 rounded font-semibold" title="Descartar NO este tipo">✅</button>
+                        <button onclick="undoFilter('type')" class="bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded font-bold" title="Deshacer filtro de Tipo">✖</button>
                     </div>
-                    <div class="flex space-x-2">
-                        <input type="text" id="input-room-code" placeholder="Código de sala (ej. POKE42)" class="flex-grow uppercase bg-gray-50 border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 font-bold tracking-widest text-center">
-                        <button onclick="joinRoom()" class="bg-gray-900 hover:bg-black text-white font-semibold px-5 py-3 rounded-xl transition text-sm">Entrar</button>
+
+                    <!-- 2. Color Predominante -->
+                    <div id="container-filter-color" class="flex items-center gap-1 bg-slate-900 p-2 rounded-lg border border-slate-700 transition-colors">
+                        <select id="filter-color" class="bg-slate-800 border border-slate-700 px-2 py-1 rounded text-white flex-grow capitalize">
+                            <option value="">Color...</option>
+                            <option value="black">Negro</option><option value="blue">Azul</option><option value="brown">Marrón</option><option value="gray">Gris</option><option value="green">Verde</option><option value="pink">Rosa</option><option value="purple">Morado</option><option value="red">Rojo</option><option value="white">Blanco</option><option value="yellow">Amarillo</option>
+                        </select>
+                        <button onclick="eliminateByColor(true)" class="bg-red-900/60 hover:bg-red-800 text-red-200 px-2 py-1 rounded font-semibold" title="Descartar este color">❌</button>
+                        <button onclick="eliminateByColor(false)" class="bg-emerald-900/60 hover:bg-emerald-800 text-emerald-200 px-2 py-1 rounded font-semibold" title="Descartar NO este color">✅</button>
+                        <button onclick="undoFilter('color')" class="bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded font-bold" title="Deshacer filtro de Color">✖</button>
+                    </div>
+
+                    <!-- 3. Fase Evolutiva -->
+                    <div id="container-filter-stage" class="flex items-center gap-1 bg-slate-900 p-2 rounded-lg border border-slate-700 transition-colors">
+                        <select id="filter-stage" class="bg-slate-800 border border-slate-700 px-2 py-1 rounded text-white flex-grow">
+                            <option value="">Fase Evolutiva...</option>
+                            <option value="Fase 1 (Base)">Fase 1 (Base)</option>
+                            <option value="Fase 2">Fase 2</option>
+                            <option value="Fase 3">Fase 3</option>
+                            <option value="Única">Única</option>
+                        </select>
+                        <button onclick="eliminateByStage(true)" class="bg-red-900/60 hover:bg-red-800 text-red-200 px-2 py-1 rounded font-semibold" title="Descartar esta fase">❌</button>
+                        <button onclick="eliminateByStage(false)" class="bg-emerald-900/60 hover:bg-emerald-800 text-emerald-200 px-2 py-1 rounded font-semibold" title="Descartar NO esta fase">✅</button>
+                        <button onclick="undoFilter('stage')" class="bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded font-bold" title="Deshacer filtro de Fase">✖</button>
+                    </div>
+
+                    <!-- 4. Generación -->
+                    <div id="container-filter-gen" class="flex items-center gap-1 bg-slate-900 p-2 rounded-lg border border-slate-700 transition-colors">
+                        <select id="filter-gen" class="bg-slate-800 border border-slate-700 px-2 py-1 rounded text-white flex-grow">
+                            <option value="">Generación...</option>
+                            <option value="1">Gen 1</option><option value="2">Gen 2</option><option value="3">Gen 3</option><option value="4">Gen 4</option><option value="5">Gen 5</option><option value="6">Gen 6</option><option value="7">Gen 7</option><option value="8">Gen 8</option><option value="9">Gen 9</option>
+                        </select>
+                        <button onclick="eliminateByGen(true)" class="bg-red-900/60 hover:bg-red-800 text-red-200 px-2 py-1 rounded font-semibold" title="Descartar esta gen">❌</button>
+                        <button onclick="eliminateByGen(false)" class="bg-emerald-900/60 hover:bg-emerald-800 text-emerald-200 px-2 py-1 rounded font-semibold" title="Descartar NO esta gen">✅</button>
+                        <button onclick="undoFilter('gen')" class="bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded font-bold" title="Deshacer filtro de Generación">✖</button>
+                    </div>
+
+                    <!-- 5. Peso (kg) -->
+                    <div id="container-filter-weight" class="flex items-center gap-1 bg-slate-900 p-2 rounded-lg border border-slate-700 transition-colors">
+                        <select id="filter-weight-op" class="bg-slate-800 border border-slate-700 px-2 py-1 rounded text-white">
+                            <option value="greater">Pesa > </option>
+                            <option value="less">Pesa < </option>
+                        </select>
+                        <input type="number" id="filter-weight-val" placeholder="kg" class="bg-slate-800 border border-slate-700 px-2 py-1 rounded text-white w-16 text-center">
+                        <button onclick="eliminateByWeight()" class="bg-slate-700 hover:bg-slate-600 px-2 py-1 rounded font-semibold">Aplicar</button>
+                        <button onclick="undoFilter('weight')" class="bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded font-bold" title="Deshacer filtro de Peso">✖</button>
+                    </div>
+
+                    <!-- 6. Altura (m) -->
+                    <div id="container-filter-height" class="flex items-center gap-1 bg-slate-900 p-2 rounded-lg border border-slate-700 transition-colors">
+                        <select id="filter-height-op" class="bg-slate-800 border border-slate-700 px-2 py-1 rounded text-white">
+                            <option value="greater">Mide > </option>
+                            <option value="less">Mide < </option>
+                        </select>
+                        <input type="number" step="0.1" id="filter-height-val" placeholder="metros" class="bg-slate-800 border border-slate-700 px-2 py-1 rounded text-white w-16 text-center">
+                        <button onclick="eliminateByHeight()" class="bg-slate-700 hover:bg-slate-600 px-2 py-1 rounded font-semibold">Aplicar</button>
+                        <button onclick="undoFilter('height')" class="bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded font-bold" title="Deshacer filtro de Altura">✖</button>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- ================= VIEW 2: MANUAL SECRET SELECTION ================= -->
-        <div id="view-selection" class="hidden flex flex-col flex-grow">
-            <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-200 mb-4 text-center">
-                <h2 class="text-xl font-black text-gray-900">Elige tu Pokémon Secreto</h2>
-                <p class="text-sm text-gray-600">Selecciona de la grilla inferior el Pokémon que tu oponente tendrá que adivinar.</p>
-            </div>
-            
-            <div class="mb-3 flex justify-between items-center px-1">
-                <span class="text-xs font-bold text-gray-500 uppercase">Generaciones 1 a 9 (1025 Pokémon)</span>
-                <input type="text" id="search-select" oninput="filterSelectionGrid()" placeholder="Buscar Pokémon..." class="bg-white border border-gray-200 px-3 py-1.5 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 w-48">
-            </div>
-
-            <div id="selection-grid" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3 overflow-y-auto max-h-[70vh] p-1">
-                <!-- Populated via JS -->
-            </div>
-        </div>
-
-        <!-- ================= VIEW 3: WAITING FOR RIVAL ================= -->
-        <div id="view-waiting" class="hidden flex flex-col items-center justify-center flex-grow my-auto text-center">
-            <div class="bg-white p-8 rounded-3xl shadow-xl max-w-md w-full border border-gray-100">
-                <div class="w-16 h-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl animate-spin">
-                    ⏳
+            <!-- Grilla del Tablero con Sprites Maximizados -->
+            <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 shadow-2xl">
+                <div class="mb-3 flex justify-between items-center px-2">
+                    <span class="text-xs font-bold text-slate-400 uppercase">Tablero de Descarte (<span id="remaining-count">0</span> restantes)</span>
+                    <input type="text" id="search-board-pokemon" placeholder="🔍 Filtrar nombre..." oninput="filterBoard()" class="px-3 py-1 bg-slate-900 border border-slate-700 rounded-lg text-white text-xs focus:outline-none focus:border-red-500 w-48">
                 </div>
-                <h3 class="text-xl font-bold text-gray-900 mb-2">Esperando al oponente...</h3>
-                <p class="text-sm text-gray-600 mb-4">Has elegido tu Pokémon secreto. Esperando a que tu amigo también elija el suyo para comenzar la partida.</p>
-                <div class="bg-gray-50 p-4 rounded-xl border border-gray-200 inline-block">
-                    <p class="text-xs text-gray-500 uppercase font-semibold">Código para compartir:</p>
-                    <p id="waiting-room-code" class="text-2xl font-black tracking-widest text-red-600 mt-1"></p>
-                </div>
-            </div>
-        </div>
-
-        <!-- ================= VIEW 4: MAIN GAME BOARD ================= -->
-        <div id="view-board" class="hidden flex flex-col flex-grow">
-            <!-- Toolbar -->
-            <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-200 mb-6 flex flex-wrap items-center justify-between gap-4">
-                <div class="flex items-center space-x-4">
-                    <div class="bg-red-50 p-2.5 rounded-xl border border-red-100 flex items-center space-x-3">
-                        <img id="my-secret-img" src="" alt="Secret" class="w-10 h-10 object-contain">
-                        <div>
-                            <p class="text-[10px] text-gray-500 font-bold uppercase">Tu Pokémon Secreto</p>
-                            <p id="my-secret-name" class="font-bold text-red-600 capitalize text-sm"></p>
-                        </div>
-                    </div>
-                    <div class="bg-blue-50 p-2.5 rounded-xl border border-blue-100 flex items-center space-x-3">
-                        <img id="rival-secret-img" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/25.png" alt="Rival Secret" class="w-10 h-10 object-contain filter blur-sm">
-                        <div>
-                            <p class="text-[10px] text-gray-500 font-bold uppercase">Rival Secreto</p>
-                            <p class="font-bold text-blue-600 capitalize text-sm">??? (Adivínalo)</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="flex items-center space-x-2 w-full sm:w-auto">
-                    <button onclick="openGuessModal()" class="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-4 py-2.5 rounded-xl shadow-md transition flex items-center justify-center space-x-1.5 text-sm">
-                        <span>🏆</span>
-                        <span>¡Arriesgar / Adivinar!</span>
-                    </button>
-                    <button onclick="resetBoard()" class="flex-1 sm:flex-none bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold px-4 py-2.5 rounded-xl border border-gray-300 transition text-sm">
-                        🔄 Reiniciar Tablero
-                    </button>
-                </div>
-            </div>
-
-            <!-- Grid Header -->
-            <div class="mb-4 flex flex-wrap justify-between items-center gap-2 px-1">
-                <h3 class="text-sm font-bold text-gray-500 uppercase tracking-wide">Tablero de Descarte (<span id="remaining-count">1025</span> disponibles)</h3>
-                <input type="text" id="search-board" oninput="filterBoardGrid()" placeholder="Filtrar tablero..." class="bg-white border border-gray-200 px-3 py-1.5 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 w-48">
-            </div>
-
-            <!-- Grid Container -->
-            <div id="pokemon-grid" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
-                <!-- Dynamically populated -->
+                <div id="game-board-grid" class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 max-h-[52vh] overflow-y-auto p-1"></div>
             </div>
         </div>
 
     </main>
 
-    <!-- GUESS MODAL -->
-    <div id="guess-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-gray-100 flex flex-col max-h-[90vh]">
-            <div class="flex justify-between items-center mb-3">
-                <h3 class="text-xl font-bold text-gray-900">¿Cuál es el Pokémon de tu oponente?</h3>
-                <button onclick="closeGuessModal()" class="text-gray-400 hover:text-gray-600 font-bold text-lg">&times;</button>
+    <!-- MODAL DE ARRIESGAR -->
+    <div id="modal-guess" class="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
+            <h3 class="text-lg font-bold text-amber-400 text-center">🎯 ¿Quién crees que es el Pokémon del rival?</h3>
+            <input type="text" id="search-guess-modal" placeholder="🔍 Buscar..." oninput="filterGuessModal()" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:border-amber-500">
+            <div id="guess-modal-grid" class="grid grid-cols-3 gap-2 max-h-60 overflow-y-auto p-1 bg-slate-900 rounded-xl border border-slate-700"></div>
+            <div class="flex justify-end pt-2">
+                <button onclick="closeGuessModal()" class="bg-slate-700 hover:bg-slate-600 text-xs font-bold px-4 py-2 rounded-lg">Cancelar</button>
             </div>
-            <p class="text-sm text-gray-600 mb-3">Selecciona tu apuesta final:</p>
-            <input type="text" id="search-guess" oninput="filterGuessGrid()" placeholder="Buscar para arriesgar..." class="bg-gray-50 border border-gray-200 px-3 py-2 rounded-xl text-sm mb-3 w-full">
-            
-            <div id="guess-grid" class="grid grid-cols-3 sm:grid-cols-4 gap-2.5 overflow-y-auto p-1 max-h-64 border rounded-xl bg-gray-50 mb-4">
-                <!-- Populate list -->
-            </div>
-            <button onclick="closeGuessModal()" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-3 rounded-xl transition">Cancelar</button>
         </div>
     </div>
 
-    <!-- RESULT MODAL (VICTORY / DEFEAT) -->
-    <div id="result-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white rounded-3xl max-w-md w-full p-8 shadow-2xl text-center border border-gray-100">
-            <div id="result-icon" class="w-20 h-20 bg-amber-100 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-4 text-4xl shadow-md">
-                👑
-            </div>
-            <h2 id="result-title" class="text-3xl font-black text-gray-900 mb-2">¡Victoria!</h2>
-            <p id="result-message" class="text-gray-600 mb-6 text-sm sm:text-base">Has adivinado correctamente el Pokémon de tu oponente.</p>
-            <button onclick="location.reload()" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3.5 px-6 rounded-xl shadow-lg transition">
-                Nueva Partida 🎮
-            </button>
+    <!-- MODAL DE VICTORIA -->
+    <div id="modal-result" class="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl max-w-md w-full p-6 text-center space-y-4 shadow-2xl">
+            <h2 id="result-title" class="text-3xl font-black text-emerald-400">¡VICTORIA!</h2>
+            <p id="result-message" class="text-sm text-slate-300">Has adivinado correctamente.</p>
+            <button onclick="location.reload()" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3 rounded-xl">Volver al Inicio</button>
         </div>
     </div>
 
-    <!-- Firebase SDK Imports -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    <script>
+        let allPokemon = [];
+        let activePokemonPool = [];
+        let peer = null;
+        let conn = null;
+        let connections = [];
+        let isHost = false;
+        let myUsername = "";
+        let roomCode = "";
+        let playersList = [];
+        let mySecretPokemon = null;
+        let selectedGenerations = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 
-        // Global Firebase configuration and variables provided by environment
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'pokemon-guess-who-multi-v1';
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-        const initialToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        let activeFilters = {
+            type: null,
+            color: null,
+            stage: null,
+            gen: null,
+            weight: null,
+            height: null
+        };
 
-        let app, db, auth, userId = null;
-        let currentRoomCode = null;
-        let isPlayer1 = false;
-        let unsubRoom = null;
+        const typeTranslations = {
+            normal: 'Normal', fire: 'Fuego', water: 'Agua', grass: 'Planta',
+            electric: 'Eléctrico', ice: 'Hielo', fighting: 'Lucha', poison: 'Veneno',
+            ground: 'Tierra', flying: 'Volador', psychic: 'Psíquico', bug: 'Bicho',
+            rock: 'Roca', ghost: 'Fantasma', dragon: 'Dragón', steel: 'Acero',
+            fairy: 'Hada', dark: 'Siniestro'
+        };
 
-        // Complete 1-1025 Pokémon Master List generation
-        const allPokemon = [];
-        // Names list for standard Gen 1-9 fallback or sprite mapping. We map IDs 1 to 1025.
-        // To ensure instant performance and reliable loading, we generate standard data array:
-        for (let i = 1; i <= 1025; i++) {
-            allPokemon.push({
-                id: i,
-                name: `Pokémon #${i}`,
-                sprite: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${i}.png`
-            });
+        const colorTranslations = {
+            black: 'Negro', blue: 'Azul', brown: 'Marrón', gray: 'Gris',
+            green: 'Verde', pink: 'Rosa', purple: 'Morado', red: 'Rojo',
+            white: 'Blanco', yellow: 'Amarillo'
+        };
+
+        function getGeneration(id) {
+            if (id <= 151) return 1;
+            if (id <= 251) return 2;
+            if (id <= 386) return 3;
+            if (id <= 493) return 4;
+            if (id <= 649) return 5;
+            if (id <= 721) return 6;
+            if (id <= 809) return 7;
+            if (id <= 905) return 8;
+            return 9;
         }
 
-        // Fetch real names if desired or use clean format. Let's load official names asynchronously for popular ones or generate clean fallback.
-        // Actually, let's fetch primary names quickly or map them cleanly. Let's fetch a lightweight JSON or list of names.
-        async function loadPokemonNames() {
+        async function loadPokedex() {
             try {
-                const res = await fetch('https://pokeapi.co/api/v2/pokemon?limit=1025');
-                const data = await res.json();
-                data.results.forEach((p, index) => {
+                const response = await fetch('https://pokeapi.co/api/v2/pokemon?limit=1025&offset=0');
+                const data = await response.json();
+                allPokemon = data.results.map((p, index) => {
                     const id = index + 1;
-                    if (allPokemon[index]) {
-                        // Capitalize name nicely
-                        allPokemon[index].name = p.name.charAt(0).toUpperCase() + p.name.slice(1).replace(/-/g, ' ');
-                    }
+                    return {
+                        id: id,
+                        name: p.name,
+                        displayName: p.name.charAt(0).toUpperCase() + p.name.slice(1),
+                        sprite: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`,
+                        gen: getGeneration(id)
+                    };
                 });
-                renderSelectionGrid(allPokemon);
-                renderBoardGrid(allPokemon);
-                renderGuessGrid(allPokemon);
             } catch (e) {
-                console.warn('Using offline fallback names', e);
-                renderSelectionGrid(allPokemon);
-                renderBoardGrid(allPokemon);
-                renderGuessGrid(allPokemon);
+                console.error("Error cargando Pokédex", e);
             }
         }
 
-        let discardedStatus = {};
-        let mySecret = null;
-        let rivalSecret = null;
+        loadPokedex();
 
-        window.onload = async function() {
-            allPokemon.forEach(p => discardedStatus[p.id] = false);
-            
-            // Initialize Firebase
-            try {
-                app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                auth = getAuth(app);
-                if (initialToken) {
-                    await signInWithCustomToken(auth, initialToken);
-                } else {
-                    await signInAnonymously(auth);
-                }
-                userId = auth.currentUser?.uid || crypto.randomUUID();
-            } catch (e) {
-                console.error("Firebase init error:", e);
-            }
-
-            loadPokemonNames();
-        };
-
-        // Room Creation
-        window.createRoom = async function() {
-            if (!db) { alert("Error de conexión con base de datos"); return; }
-            const code = Math.random().toString(36).substring(2, 8).toUpperCase();
-            currentRoomCode = code;
-            isPlayer1 = true;
-
-            const roomRef = doc(db, 'artifacts', appId, 'public', 'data', `room_${code}`);
-            await setDoc(roomRef, {
-                code: code,
-                p1Id: userId,
-                p2Id: null,
-                p1Secret: null,
-                p2Secret: null,
-                status: 'waiting', // waiting, selecting, playing, finished
-                winner: null
-            });
-
-            document.getElementById('display-room-code').innerText = code;
-            document.getElementById('waiting-room-code').innerText = code;
-            document.getElementById('room-badge').classList.remove('hidden');
-            
-            switchView('view-selection');
-            listenToRoom(code);
-        };
-
-        // Join Room
-        window.joinRoom = async function() {
-            const code = document.getElementById('input-room-code').value.trim().toUpperCase();
-            if (!code) { alert("Ingresa un código de sala válido"); return; }
-            if (!db) { alert("Error de conexión"); return; }
-
-            const roomRef = doc(db, 'artifacts', appId, 'public', 'data', `room_${code}`);
-            const snap = await getDoc(roomRef);
-
-            if (!snap.exists()) {
-                alert("La sala no existe o ha expirado.");
-                return;
-            }
-
-            const data = snap.data();
-            currentRoomCode = code;
-            isPlayer1 = false;
-
-            if (!data.p2Id && data.p1Id !== userId) {
-                await updateDoc(roomRef, { p2Id: userId });
-            }
-
-            document.getElementById('display-room-code').innerText = code;
-            document.getElementById('room-badge').classList.remove('hidden');
-
-            switchView('view-selection');
-            listenToRoom(code);
-        };
-
-        // Listen to Room Changes in Realtime
-        function listenToRoom(code) {
-            const roomRef = doc(db, 'artifacts', appId, 'public', 'data', `room_${code}`);
-            if (unsubRoom) unsubRoom();
-
-            unsubRoom = onSnapshot(roomRef, (docSnap) => {
-                if (!docSnap.exists()) return;
-                const data = docSnap.data();
-
-                // Check if both players have chosen secret
-                if (data.status === 'playing' || (data.p1Secret && data.p2Secret)) {
-                    rivalSecret = isPlayer1 ? data.p2Secret : data.p1Secret;
-                    if (rivalSecret) {
-                        document.getElementById('rival-secret-img').src = rivalSecret.sprite;
-                    }
-                    if (document.getElementById('view-waiting').classList.contains('hidden') === false && mySecret) {
-                        switchView('view-board');
-                    }
-                }
-
-                if (data.winner) {
-                    showResultModal(data.winner === userId);
-                }
-            }, (error) => {
-                console.error("Snapshot error:", error);
-            });
+        function toggleAllGenerations(state) {
+            document.querySelectorAll('.gen-cb').forEach(cb => cb.checked = state);
         }
 
-        // Select Secret Pokémon
-        window.selectMySecret = async function(pokemon) {
-            mySecret = pokemon;
-            document.getElementById('my-secret-img').src = pokemon.sprite;
-            document.getElementById('my-secret-name').innerText = pokemon.name;
-
-            // Update room in Firestore
-            const roomRef = doc(db, 'artifacts', appId, 'public', 'data', `room_${currentRoomCode}`);
-            const snap = await getDoc(roomRef);
-            if (snap.exists()) {
-                const data = snap.data();
-                const updateData = {};
-                if (isPlayer1) updateData.p1Secret = pokemon;
-                else updateData.p2Secret = pokemon;
-
-                if ((isPlayer1 && data.p2Secret) || (!isPlayer1 && data.p1Secret)) {
-                    updateData.status = 'playing';
-                }
-
-                await updateDoc(roomRef, updateData);
-            }
-
-            // Check if rival has chosen already
-            const snapCheck = await getDoc(roomRef);
-            const freshData = snapCheck.data();
-            const rivalHasChosen = isPlayer1 ? freshData.p2Secret : freshData.p1Secret;
-
-            if (rivalHasChosen) {
-                rivalSecret = rivalHasChosen;
-                document.getElementById('rival-secret-img').src = rivalSecret.sprite;
-                switchView('view-board');
-            } else {
-                switchView('view-waiting');
-            }
-        };
-
-        // Make Final Guess
-        window.makeGuess = async function(pokemon) {
-            closeGuessModal();
-            if (!rivalSecret) return;
-
-            const isCorrect = pokemon.id === rivalSecret.id;
-            const roomRef = doc(db, 'artifacts', appId, 'public', 'data', `room_${currentRoomCode}`);
-
-            if (isCorrect) {
-                await updateDoc(roomRef, { winner: userId });
-                showResultModal(true);
-            } else {
-                alert(`¡Incorrecto! ${pokemon.name} no es el Pokémon de tu oponente.`);
-            }
-        };
-
-        function showResultModal(won) {
-            const modal = document.getElementById('result-modal');
-            const icon = document.getElementById('result-icon');
-            const title = document.getElementById('result-title');
-            const msg = document.getElementById('result-message');
-
-            if (won) {
-                icon.innerHTML = "👑";
-                icon.className = "w-20 h-20 bg-amber-100 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-4 text-4xl shadow-md animate-bounce";
-                title.innerText = "¡Victoria Épica!";
-                msg.innerText = "¡Has adivinado correctamente el Pokémon de tu oponente antes que nadie!";
-            } else {
-                icon.innerHTML = "💀";
-                icon.className = "w-20 h-20 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 text-4xl shadow-md";
-                title.innerText = "Derrota";
-                msg.innerText = "Tu oponente adivino primero tu Pokémon secreto.";
-            }
-            modal.classList.remove('hidden');
-        }
-
-        // View Switcher
-        function switchView(viewId) {
-            ['view-lobby', 'view-selection', 'view-waiting', 'view-board'].forEach(id => {
+        function showView(viewId) {
+            ['view-lobby', 'view-waiting-room', 'view-select-secret', 'view-game-board'].forEach(id => {
                 document.getElementById(id).classList.add('hidden');
             });
             document.getElementById(viewId).classList.remove('hidden');
         }
 
-        // Render Grids
-        function renderSelectionGrid(list) {
-            const grid = document.getElementById('selection-grid');
+        function generateRoomCode() {
+            const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+            let code = 'POKE';
+            for(let i=0; i<3; i++) code += chars.charAt(Math.floor(Math.random() * chars.length));
+            return code;
+        }
+
+        function createRoom() {
+            myUsername = document.getElementById('input-username').value.trim();
+            if(!myUsername) { alert("Ingresa tu nombre."); return; }
+
+            selectedGenerations = Array.from(document.querySelectorAll('.gen-cb:checked')).map(cb => parseInt(cb.value));
+            if(selectedGenerations.length === 0) { alert("Selecciona al menos una generación."); return; }
+
+            roomCode = generateRoomCode();
+            isHost = true;
+            peer = new Peer('pk-' + roomCode);
+
+            peer.on('open', (id) => {
+                document.getElementById('display-room-code').innerText = roomCode;
+                playersList = [{ id: peer.id, name: myUsername, host: true }];
+                updatePlayersUI();
+                showView('view-waiting-room');
+                document.getElementById('host-controls').classList.remove('hidden');
+                document.getElementById('guest-waiting-msg').classList.add('hidden');
+                updateStatusBadge("Anfitrión", "bg-emerald-500");
+            });
+
+            peer.on('connection', (connection) => {
+                if(connections.length >= 9) { connection.close(); return; }
+                connections.push(connection);
+                connection.on('data', (data) => handleIncomingData(data, connection));
+                connection.on('close', () => {
+                    connections = connections.filter(c => c !== connection);
+                    playersList = playersList.filter(p => p.id !== connection.peer);
+                    updatePlayersUI();
+                    broadcast({ type: 'UPDATE_PLAYERS', players: playersList, gens: selectedGenerations });
+                });
+            });
+        }
+
+        function joinRoom() {
+            myUsername = document.getElementById('input-username').value.trim();
+            roomCode = document.getElementById('input-room-code').value.trim().toUpperCase();
+            if(!myUsername || !roomCode) { alert("Ingresa tu nombre y código."); return; }
+
+            isHost = false;
+            peer = new Peer();
+
+            peer.on('open', (id) => {
+                conn = peer.connect('pk-' + roomCode);
+                conn.on('open', () => {
+                    updateStatusBadge("Conectado", "bg-emerald-500");
+                    conn.send({ type: 'JOIN_ROOM', name: myUsername, id: peer.id });
+                    showView('view-waiting-room');
+                    document.getElementById('display-room-code').innerText = roomCode;
+                });
+                conn.on('data', (data) => handleIncomingData(data, conn));
+            });
+        }
+
+        function handleIncomingData(data, senderConn) {
+            if (data.type === 'JOIN_ROOM' && isHost) {
+                if(playersList.length >= 10) return;
+                playersList.push({ id: data.id, name: data.name, host: false });
+                updatePlayersUI();
+                broadcast({ type: 'UPDATE_PLAYERS', players: playersList, gens: selectedGenerations });
+            } else if (data.type === 'UPDATE_PLAYERS') {
+                playersList = data.players;
+                selectedGenerations = data.gens;
+                updatePlayersUI();
+            } else if (data.type === 'START_SELECTION') {
+                initGamePool();
+                buildSecretSelectionGrid();
+                showView('view-select-secret');
+            } else if (data.type === 'PLAYER_WON') {
+                triggerGameOver(data.winnerName, data.pokemonName);
+            }
+        }
+
+        function broadcast(data) {
+            connections.forEach(c => { if(c.open) c.send(data); });
+        }
+
+        function updatePlayersUI() {
+            document.getElementById('player-count').innerText = playersList.length;
+            const listEl = document.getElementById('players-list');
+            listEl.innerHTML = '';
+            playersList.forEach(p => {
+                listEl.innerHTML += `<li class="flex justify-between items-center text-xs text-slate-300 bg-slate-900/50 px-3 py-2 rounded-lg"><span>👤 ${p.name}</span> ${p.host ? '<span class="text-amber-400 font-bold">Anfitrión</span>' : ''}</li>`;
+            });
+        }
+
+        function updateStatusBadge(text, color) {
+            const badge = document.getElementById('connection-status');
+            badge.innerText = text;
+            badge.className = `text-xs font-bold px-3 py-1 rounded-full shadow ${color} text-slate-950`;
+        }
+
+        function startPokemonSelection() {
+            broadcast({ type: 'START_SELECTION', gens: selectedGenerations });
+            initGamePool();
+            buildSecretSelectionGrid();
+            showView('view-select-secret');
+        }
+
+        function initGamePool() {
+            activePokemonPool = allPokemon.filter(p => selectedGenerations.includes(p.gen));
+        }
+
+        async function enrichPokemonData(pokemon) {
+            if (pokemon.types) return pokemon;
+            try {
+                const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${pokemon.id}`);
+                const data = await res.json();
+                pokemon.types = data.types.map(t => t.type.name);
+                pokemon.height = parseFloat((data.height / 10).toFixed(1));
+                pokemon.weight = parseFloat((data.weight / 10).toFixed(1));
+                
+                const speciesRes = await fetch(data.species.url);
+                const speciesData = await speciesRes.json();
+                pokemon.color = speciesData.color.name;
+                
+                const evoRes = await fetch(speciesData.evolution_chain.url);
+                const evoData = await evoRes.json();
+                pokemon.stage = getEvoStage(evoData.chain, pokemon.name);
+            } catch(e) {
+                pokemon.types = ['normal'];
+                pokemon.height = 1.0;
+                pokemon.weight = 10.0;
+                pokemon.color = 'gray';
+                pokemon.stage = 'Única';
+            }
+            return pokemon;
+        }
+
+        function getEvoStage(chain, targetName) {
+            if (chain.species.name === targetName) {
+                return (chain.evolves_to.length > 0) ? 'Fase 1 (Base)' : 'Única';
+            }
+            
+            for (let child of chain.evolves_to) {
+                if (child.species.name === targetName) {
+                    return (child.evolves_to.length > 0) ? 'Fase 2' : 'Fase 3';
+                }
+                for (let grandchild of child.evolves_to) {
+                    if (grandchild.species.name === targetName) {
+                        return 'Fase 3';
+                    }
+                }
+            }
+            return 'Única';
+        }
+
+        async function buildSecretSelectionGrid(filter = "") {
+            const grid = document.getElementById('secret-grid');
+            grid.innerHTML = '<div class="col-span-full text-center text-xs text-slate-400 py-4">Cargando Pokémon...</div>';
+            
+            const filtered = activePokemonPool.filter(p => p.name.includes(filter.toLowerCase()));
             grid.innerHTML = '';
-            list.forEach(p => {
+
+            for (let p of filtered) { // Se quitó el límite de .slice(0, 40) para mostrar la grilla completa
+                await enrichPokemonData(p);
                 const card = document.createElement('div');
-                card.className = "bg-white p-3 rounded-2xl shadow-sm border border-gray-200 flex flex-col items-center justify-between cursor-pointer hover:border-red-400 hover:shadow-md transition select-none";
+                card.className = "bg-slate-800 border border-slate-700 rounded-xl p-2 flex flex-col items-center cursor-pointer hover:border-red-500 transition group text-xs";
+                const translatedTypes = p.types.map(t => typeTranslations[t] || t).join(', ');
+                card.innerHTML = `
+                    <span class="text-[10px] text-slate-500 font-mono">#${String(p.id).padStart(3, '0')}</span>
+                    <img src="${p.sprite}" class="w-20 h-20 group-hover:scale-110 transition">
+                    <span class="font-bold mt-1 text-center">${p.displayName}</span>
+                    <span class="text-[9px] text-red-400 font-semibold">${translatedTypes}</span>
+                `;
                 card.onclick = () => selectMySecret(p);
-                card.innerHTML = `
-                    <span class="text-[10px] font-bold text-gray-400 self-end">#${p.id}</span>
-                    <div class="w-20 h-20 my-1 flex items-center justify-center">
-                        <img src="${p.sprite}" alt="${p.name}" class="w-full h-full object-contain pointer-events-none" onerror="this.src='https://placehold.co/80x80/f3f4f6/9ca3af?text=PKMN'">
-                    </div>
-                    <span class="font-bold text-xs capitalize text-gray-800 text-center truncate w-full">${p.name}</span>
-                `;
                 grid.appendChild(card);
-            });
+            }
         }
 
-        function renderBoardGrid(list) {
-            const grid = document.getElementById('pokemon-grid');
+        function filterSecretSelection() {
+            buildSecretSelectionGrid(document.getElementById('search-select-pokemon').value);
+        }
+
+        function selectMySecret(pokemon) {
+            mySecretPokemon = pokemon;
+            buildGameBoard();
+            const translatedTypes = pokemon.types.map(t => typeTranslations[t] || t).join(', ');
+            document.getElementById('my-secret-preview').innerHTML = `
+                <img src="${pokemon.sprite}" class="w-10 h-10">
+                <span class="text-xs font-bold text-white">${pokemon.displayName} (#${pokemon.id}) - <span class="text-red-400">${translatedTypes}</span></span>
+            `;
+            showView('view-game-board');
+        }
+
+        async function buildGameBoard(filter = "") {
+            const grid = document.getElementById('game-board-grid');
+            grid.innerHTML = '<div class="col-span-full text-center text-xs text-slate-400 py-6">Generando tablero optimizado...</div>';
+
+            const filtered = activePokemonPool.filter(p => p.name.includes(filter.toLowerCase()));
             grid.innerHTML = '';
-            let remaining = 0;
 
-            list.forEach(p => {
-                const isDiscarded = discardedStatus[p.id];
-                if (!isDiscarded) remaining++;
-
+            for (let p of filtered) {
+                await enrichPokemonData(p);
                 const card = document.createElement('div');
-                card.className = `pokemon-card bg-white p-3 rounded-2xl shadow-sm border border-gray-200 flex flex-col items-center justify-between cursor-pointer select-none relative overflow-hidden ${isDiscarded ? 'discarded bg-gray-50' : 'hover:shadow-md hover:border-red-200'}`;
-                card.onclick = () => {
-                    discardedStatus[p.id] = !discardedStatus[p.id];
-                    renderBoardGrid(allPokemon);
-                };
+                card.className = "pokemon-card bg-slate-900 border border-slate-700 rounded-xl p-1.5 flex flex-col items-center justify-between cursor-pointer relative select-none text-xs h-48";
+                card.id = `board-card-${p.id}`;
+                card.dataset.id = p.id;
+                card.dataset.types = JSON.stringify(p.types);
+                card.dataset.weight = p.weight;
+                card.dataset.height = p.height;
+                card.dataset.stage = p.stage;
+                card.dataset.gen = p.gen;
+                card.dataset.color = p.color;
+                
+                const colorEsp = colorTranslations[p.color] || p.color;
+                const translatedTypes = p.types.map(t => typeTranslations[t] || t).join(' / ');
 
                 card.innerHTML = `
-                    <span class="absolute top-2 right-2 text-[10px] font-bold text-gray-400">#${p.id}</span>
-                    <div class="w-20 h-20 my-2 flex items-center justify-center">
-                        <img src="${p.sprite}" alt="${p.name}" class="w-full h-full object-contain pointer-events-none" onerror="this.src='https://placehold.co/80x80/f3f4f6/9ca3af?text=PKMN'">
+                    <div class="w-full flex justify-between text-[9px] text-slate-400 px-1 font-mono">
+                        <span>#${String(p.id).padStart(3, '0')}</span>
+                        <span>Gen ${p.gen}</span>
                     </div>
-                    <span class="font-bold text-xs capitalize text-gray-800 truncate w-full text-center">${p.name}</span>
+                    <img src="${p.sprite}" class="w-36 h-36 pointer-events-none object-contain py-0.5">
+                    <div class="w-full text-center">
+                        <span class="font-bold truncate block pointer-events-none text-[11px] leading-tight">${p.displayName}</span>
+                        <div class="text-[9px] text-slate-400 pointer-events-none leading-tight mt-0.5">
+                            <span class="text-red-400 font-bold uppercase">${translatedTypes}</span> | 🎨 ${colorEsp}<br>
+                            <span>${p.stage}</span> | ⚖️ ${p.weight}kg | 📏 ${p.height}m
+                        </div>
+                    </div>
                 `;
+                card.onclick = () => {
+                    card.classList.add('eliminated');
+                    updateRemainingCount();
+                };
+                grid.appendChild(card);
+            }
+            reapplyAllFilters();
+            updateRemainingCount();
+        }
+
+        function filterBoard() {
+            buildGameBoard(document.getElementById('search-board-pokemon').value);
+        }
+
+        function resetBoard() {
+            activeFilters = { type: null, color: null, stage: null, gen: null, weight: null, height: null };
+            document.getElementById('filter-type').value = "";
+            document.getElementById('filter-color').value = "";
+            document.getElementById('filter-stage').value = "";
+            document.getElementById('filter-gen').value = "";
+            document.getElementById('filter-weight-val').value = "";
+            document.getElementById('filter-height-val').value = "";
+            
+            document.querySelectorAll('.pokemon-card').forEach(c => c.classList.remove('eliminated'));
+            updateRemainingCount();
+            checkActiveFiltersIndicator();
+        }
+
+        function updateRemainingCount() {
+            const total = document.querySelectorAll('.pokemon-card').length;
+            const eliminated = document.querySelectorAll('.pokemon-card.eliminated').length;
+            document.getElementById('remaining-count').innerText = total - eliminated;
+        }
+
+        function checkActiveFiltersIndicator() {
+            const indicator = document.getElementById('active-filters-indicator');
+            let hasActive = false;
+
+            Object.keys(activeFilters).forEach(key => {
+                const container = document.getElementById(`container-filter-${key}`);
+                if (container) {
+                    if (activeFilters[key] !== null) {
+                        container.classList.remove('border-slate-700');
+                        container.classList.add('border-amber-400', 'shadow-[0_0_10px_rgba(251,191,36,0.3)]');
+                        hasActive = true;
+                    } else {
+                        container.classList.remove('border-amber-400', 'shadow-[0_0_10px_rgba(251,191,36,0.3)]');
+                        container.classList.add('border-slate-700');
+                    }
+                }
+            });
+
+            if (hasActive) indicator.classList.remove('hidden');
+            else indicator.classList.add('hidden');
+        }
+
+        function reapplyAllFilters() {
+            document.querySelectorAll('.pokemon-card').forEach(card => {
+                let shouldEliminate = false;
+
+                if (activeFilters.type) {
+                    const types = JSON.parse(card.dataset.types || '[]');
+                    const has = types.includes(activeFilters.type.val);
+                    if (activeFilters.type.isTarget ? has : !has) shouldEliminate = true;
+                }
+                if (activeFilters.color && !shouldEliminate) {
+                    const color = card.dataset.color;
+                    const matches = (color === activeFilters.color.val);
+                    if (activeFilters.color.isTarget ? matches : !matches) shouldEliminate = true;
+                }
+                if (activeFilters.stage && !shouldEliminate) {
+                    const stage = card.dataset.stage;
+                    const matches = (stage === activeFilters.stage.val);
+                    if (activeFilters.stage.isTarget ? matches : !matches) shouldEliminate = true;
+                }
+                if (activeFilters.gen && !shouldEliminate) {
+                    const gen = parseInt(card.dataset.gen);
+                    const matches = (gen === parseInt(activeFilters.gen.val));
+                    if (activeFilters.gen.isTarget ? matches : !matches) shouldEliminate = true;
+                }
+                if (activeFilters.weight && !shouldEliminate) {
+                    const w = parseFloat(card.dataset.weight);
+                    const cond = (activeFilters.weight.op === 'greater') ? (w <= activeFilters.weight.val) : (w >= activeFilters.weight.val);
+                    if (cond) shouldEliminate = true;
+                }
+                if (activeFilters.height && !shouldEliminate) {
+                    const h = parseFloat(card.dataset.height);
+                    const cond = (activeFilters.height.op === 'greater') ? (h <= activeFilters.height.val) : (h >= activeFilters.height.val);
+                    if (cond) shouldEliminate = true;
+                }
+
+                if (shouldEliminate) card.classList.add('eliminated');
+            });
+            updateRemainingCount();
+            checkActiveFiltersIndicator();
+        }
+
+        function eliminateByType(isTargetType) {
+            const val = document.getElementById('filter-type').value;
+            if(!val) { alert("Selecciona un tipo."); return; }
+            activeFilters.type = { val, isTarget: isTargetType };
+            reapplyAllFilters();
+        }
+
+        function eliminateByColor(isTargetColor) {
+            const val = document.getElementById('filter-color').value;
+            if(!val) { alert("Selecciona un color."); return; }
+            activeFilters.color = { val, isTarget: isTargetColor };
+            reapplyAllFilters();
+        }
+
+        function eliminateByStage(isTargetStage) {
+            const val = document.getElementById('filter-stage').value;
+            if(!val) { alert("Selecciona una fase evolutiva."); return; }
+            activeFilters.stage = { val, isTarget: isTargetStage };
+            reapplyAllFilters();
+        }
+
+        function eliminateByGen(isTargetGen) {
+            const val = document.getElementById('filter-gen').value;
+            if(!val) { alert("Selecciona una generación."); return; }
+            activeFilters.gen = { val, isTarget: isTargetGen };
+            reapplyAllFilters();
+        }
+
+        function eliminateByWeight() {
+            const op = document.getElementById('filter-weight-op').value;
+            const val = parseFloat(document.getElementById('filter-weight-val').value);
+            if(isNaN(val)) { alert("Ingresa un valor de peso."); return; }
+            activeFilters.weight = { op, val };
+            reapplyAllFilters();
+        }
+
+        function eliminateByHeight() {
+            const op = document.getElementById('filter-height-op').value;
+            const val = parseFloat(document.getElementById('filter-height-val').value);
+            if(isNaN(val)) { alert("Ingresa un valor de altura."); return; }
+            activeFilters.height = { op, val };
+            reapplyAllFilters();
+        }
+
+        function undoFilter(filterName) {
+            activeFilters[filterName] = null;
+            if(filterName === 'type') document.getElementById('filter-type').value = "";
+            if(filterName === 'color') document.getElementById('filter-color').value = "";
+            if(filterName === 'stage') document.getElementById('filter-stage').value = "";
+            if(filterName === 'gen') document.getElementById('filter-gen').value = "";
+            if(filterName === 'weight') document.getElementById('filter-weight-val').value = "";
+            if(filterName === 'height') document.getElementById('filter-height-val').value = "";
+
+            document.querySelectorAll('.pokemon-card').forEach(c => c.classList.remove('eliminated'));
+            reapplyAllFilters();
+        }
+
+        function openGuessModal() {
+            buildGuessModalGrid();
+            document.getElementById('modal-guess').classList.remove('hidden');
+        }
+
+        function closeGuessModal() {
+            document.getElementById('modal-guess').classList.add('hidden');
+        }
+
+        function buildGuessModalGrid(filter = "") {
+            const grid = document.getElementById('guess-modal-grid');
+            grid.innerHTML = '';
+            activePokemonPool.filter(p => p.name.includes(filter.toLowerCase())).forEach(p => {
+                const card = document.createElement('div');
+                card.className = "bg-slate-800 border border-slate-700 rounded-lg p-2 flex flex-col items-center cursor-pointer hover:border-amber-500 transition text-xs";
+                card.innerHTML = `<img src="${p.sprite}" class="w-12 h-12"><span class="font-bold mt-1 text-center">${p.displayName}</span>`;
+                card.onclick = () => submitGuess(p);
                 grid.appendChild(card);
             });
-            document.getElementById('remaining-count').innerText = remaining;
         }
 
-        function renderGuessGrid(list) {
-            const grid = document.getElementById('guess-grid');
-            grid.innerHTML = '';
-            list.forEach(p => {
-                const item = document.createElement('div');
-                item.className = 'bg-white p-2 rounded-xl border border-gray-200 flex flex-col items-center justify-center cursor-pointer hover:bg-red-50 hover:border-red-300 transition shadow-xs';
-                item.onclick = () => makeGuess(p);
-                item.innerHTML = `
-                    <img src="${p.sprite}" alt="${p.name}" class="w-12 h-12 object-contain pointer-events-none mb-1" onerror="this.src='https://placehold.co/48x48/f3f4f6/9ca3af?text=PKMN'">
-                    <span class="text-[11px] font-semibold capitalize text-gray-700 truncate w-full text-center">${p.name}</span>
-                `;
-                grid.appendChild(item);
-            });
+        function filterGuessModal() {
+            buildGuessModalGrid(document.getElementById('search-guess-modal').value);
         }
 
-        // Filters
-        window.filterSelectionGrid = function() {
-            const query = document.getElementById('search-select').value.toLowerCase();
-            const filtered = allPokemon.filter(p => p.name.toLowerCase().includes(query) || p.id.toString() === query);
-            renderSelectionGrid(filtered);
-        };
+        function submitGuess(pokemon) {
+            closeGuessModal();
+            const payload = { type: 'PLAYER_WON', winnerName: myUsername, pokemonName: pokemon.displayName };
+            if(isHost) broadcast(payload);
+            else if(conn && conn.open) conn.send(payload);
+            triggerGameOver(myUsername, pokemon.displayName);
+        }
 
-        window.filterBoardGrid = function() {
-            const query = document.getElementById('search-board').value.toLowerCase();
-            const filtered = allPokemon.filter(p => p.name.toLowerCase().includes(query) || p.id.toString() === query);
-            renderBoardGrid(filtered);
-        };
-
-        window.filterGuessGrid = function() {
-            const query = document.getElementById('search-guess').value.toLowerCase();
-            const filtered = allPokemon.filter(p => p.name.toLowerCase().includes(query) || p.id.toString() === query);
-            renderGuessGrid(filtered);
-        };
-
-        window.openGuessModal = function() {
-            renderGuessGrid(allPokemon);
-            document.getElementById('guess-modal').classList.remove('hidden');
-        };
-
-        window.closeGuessModal = function() {
-            document.getElementById('guess-modal').classList.add('hidden');
-        };
-
-        window.resetBoard = function() {
-            allPokemon.forEach(p => discardedStatus[p.id] = false);
-            renderBoardGrid(allPokemon);
-        };
+        function triggerGameOver(winnerName, pokemonName) {
+            document.getElementById('result-title').innerText = `¡${winnerName} HA GANADO!`;
+            document.getElementById('result-message').innerText = `El Pokémon secreto era ${pokemonName}.`;
+            document.getElementById('modal-result').classList.remove('hidden');
+        }
     </script>
 </body>
 </html>
-```
-eof
-
----
-
 ### ¿Qué incluye esta versión mejorada?
 1. **Pokédex Completa (Gen 1 a Gen 9 - 1025 Pokémon):** Se cargan de manera dinámica y optimizada con buscador instantáneo para encontrar cualquier Pokémon fácilmente.
 2. **Selección Manual:** Ves la lista completa y haces clic en el Pokémon exacto que quieres que tu amigo adivine.
