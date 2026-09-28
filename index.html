@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Who's That Pokémon? - Modo Tabla Sincronizado</title>
+    <title>Who's That Pokémon? - Modo Tabla Corregido</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- PeerJS para conexión P2P -->
@@ -71,6 +71,7 @@
                 <div>
                     <label class="block text-xs font-semibold text-slate-400 mb-1">Modalidad de Juego:</label>
                     <select id="select-game-mode" class="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-red-500 text-sm font-semibold">
+                        <option value="classic">Modo Clásico (Descarte por Filtros)</option>
                         <option value="table" selected>Modo Tabla (Estilo Intentos con Pistas y Filtros Automáticos)</option>
                     </select>
                 </div>
@@ -116,6 +117,7 @@
                 <h2 class="text-xl font-bold text-red-400">Sala de Espera</h2>
                 <p class="text-xs text-slate-400 mt-1">Comparte este código con tus amigos:</p>
                 <div id="display-room-code" class="text-3xl font-mono font-black text-amber-400 bg-slate-900 py-3 rounded-xl border border-slate-700 tracking-wider mt-2 select-all">-----</div>
+                <p id="display-selected-mode" class="text-xs text-emerald-400 font-bold mt-2">Modalidad: Modo Tabla</p>
             </div>
 
             <div class="space-y-2 text-left">
@@ -137,7 +139,7 @@
         <div id="view-select-secret" class="w-full max-w-4xl bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-2xl space-y-4 hidden">
             <div class="text-center space-y-1">
                 <h2 class="text-xl font-bold text-red-400">Elige tu Pokémon Secreto</h2>
-                <p class="text-xs text-slate-400">Haz clic en el Pokémon que tu rival deberá adivinar:</p>
+                <p class="text-xs text-slate-400">Haz clic en el Pokémon que tus rivales deberán adivinar:</p>
                 <input type="text" id="search-select-pokemon" placeholder="🔍 Buscar por nombre..." oninput="filterSecretSelection()" class="w-full max-w-md mt-2 px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:border-red-500">
             </div>
 
@@ -154,8 +156,8 @@
                 </div>
 
                 <!-- Indicador Dinámico de Turno -->
-                <div id="turn-indicator" class="px-4 py-2 bg-slate-900 border border-amber-500 text-amber-400 font-bold text-xs rounded-xl shadow">
-                    ⏳ Sincronizando turno...
+                <div id="turn-indicator" class="px-4 py-2 bg-slate-900 border border-amber-500 text-amber-400 font-bold text-xs rounded-xl shadow animate-pulse">
+                    ⏳ Esperando turno...
                 </div>
             </div>
 
@@ -208,7 +210,7 @@
                 </div>
             </div>
 
-            <!-- Grilla Interactiva -->
+            <!-- Grilla Interactiva (Tocar un Pokémon aquí arriesga directamente si es tu turno) -->
             <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 shadow-2xl">
                 <div class="mb-3 flex justify-between items-center px-2">
                     <span class="text-xs font-bold text-slate-400 uppercase">Haz clic en un Pokémon para arriesgar (<span id="table-remaining-count">0</span> disponibles)</span>
@@ -240,8 +242,9 @@
         let roomCode = "";
         let playersList = [];
         let mySecretPokemon = null;
-        let opponentSecretPokemon = null;
+        let opponentSecretPokemon = null; // Guardaremos el secreto del rival al iniciar
         let selectedGenerations = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+        let gameMode = "table";
 
         // Control de Turnos
         let isMyTurn = false;
@@ -370,10 +373,7 @@
         function handleIncomingData(data, senderConn) {
             if (data.type === 'JOIN_ROOM' && isHost) {
                 if(playersList.length >= 10) return;
-                // Verificar si ya existe para no duplicar
-                if(!playersList.some(p => p.id === data.id)) {
-                    playersList.push({ id: data.id, name: data.name, host: false });
-                }
+                playersList.push({ id: data.id, name: data.name, host: false });
                 updatePlayersUI();
                 broadcast({ type: 'UPDATE_PLAYERS', players: playersList, gens: selectedGenerations });
             } else if (data.type === 'UPDATE_PLAYERS') {
@@ -388,10 +388,13 @@
                 buildSecretSelectionGrid();
                 showView('view-select-secret');
             } else if (data.type === 'SHARE_SECRET') {
+                // Guardamos el secreto del oponente para comparar en nuestras tablas
                 opponentSecretPokemon = data.secret;
             } else if (data.type === 'PLAYER_WON') {
                 triggerGameOver(data.winnerName, data.pokemonName);
             } else if (data.type === 'TABLE_GUESS') {
+                // El oponente arriesgó: esto aparece en NUESTRA tabla de "Intentos del Oponente"
+                // Comparando contra NUESTRO secreto (ya que el oponente adivina nuestro secreto)
                 addAttemptToTable('opponent', data.guessPokemon, mySecretPokemon);
                 currentTurnIndex = data.nextTurnIndex;
                 updateTurnState();
@@ -503,6 +506,7 @@
             await enrichPokemonData(pokemon);
             mySecretPokemon = pokemon;
             
+            // Compartir nuestro secreto con el oponente para que pueda validar nuestros intentos
             const secretPayload = { type: 'SHARE_SECRET', secret: pokemon };
             if (isHost) {
                 broadcast(secretPayload);
@@ -522,10 +526,9 @@
                 </div>
             `;
             
-            // Asignar el índice exacto del jugador actual ordenado en la lista compartida
             const myId = isHost ? peer.id : conn.peer;
             const foundIdx = playersList.findIndex(p => p.id === myId);
-            myPlayerIndex = foundIdx !== -1 ? foundIdx : (isHost ? 0 : 1);
+            myPlayerIndex = foundIdx !== -1 ? foundIdx : 0;
 
             buildTableGameBoard();
             updateTurnState();
@@ -596,15 +599,17 @@
         async function submitTableGuess(pokemon) {
             await enrichPokemonData(pokemon);
 
+            // CORRECCIÓN 1: Validar contra el secreto del OPONENTE para "Tus Intentos"
             if (!opponentSecretPokemon) {
                 alert("Esperando a que el oponente sincronice su secreto...");
                 return;
             }
             addAttemptToTable('my', pokemon, opponentSecretPokemon);
 
-            // Calcular siguiente turno de forma limpia y circular
+            // CORRECCIÓN 2: Calcular el turno siguiente correctamente de manera circular entre los jugadores
             const nextTurn = (currentTurnIndex + 1) % playersList.length;
 
+            // Enviar intento y nuevo turno por P2P
             const payload = { type: 'TABLE_GUESS', guessPokemon: pokemon, nextTurnIndex: nextTurn };
             if(isHost) broadcast(payload);
             else if(conn && conn.open) conn.send(payload);
@@ -612,6 +617,7 @@
             currentTurnIndex = nextTurn;
             updateTurnState();
 
+            // Aplicar filtros automáticos basados en pistas lógicas contra el secreto del oponente
             applyAutomaticFiltersFromGuess(pokemon, opponentSecretPokemon);
         }
 
@@ -619,6 +625,7 @@
             await enrichPokemonData(guessedPokemon);
             await enrichPokemonData(targetSecretPokemon);
 
+            // Evaluaciones comparadas estrictamente contra el secreto correspondiente
             const typeMatch = JSON.stringify(guessedPokemon.types.sort()) === JSON.stringify(targetSecretPokemon.types.sort());
             const typeText = guessedPokemon.types.map(t => typeTranslations[t] || t).join(' / ');
 
