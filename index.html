@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Who's That Pokémon? - Modo Tabla Completo</title>
+    <title>Who's That Pokémon? - Multijugador</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- PeerJS para conexión P2P -->
@@ -32,7 +32,7 @@
 <body class="bg-slate-900 text-slate-100 min-h-screen font-sans flex flex-col items-center justify-between">
 
     <!-- HEADER -->
-    <header class="w-full bg-slate-950/80 backdrop-blur-md border-b border-red-600/40 shadow-xl py-3 px-6 flex justify-between items-center sticky top-0 z-40">
+    <header class="w-full bg-slate-950/85 backdrop-blur-md border-b border-red-600/40 shadow-xl py-3 px-6 flex justify-between items-center sticky top-0 z-40">
         <div class="flex items-center gap-3">
             <div class="relative w-10 h-10 bg-red-600 rounded-full border-2 border-slate-900 overflow-hidden flex flex-col shadow-[0_0_12px_rgba(239,68,68,0.6)]">
                 <div class="w-full h-1/2 bg-red-600"></div>
@@ -71,7 +71,7 @@
                 <div>
                     <label class="block text-xs font-semibold text-slate-400 mb-1">Modalidad de Juego:</label>
                     <select id="select-game-mode" class="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-red-500 text-sm font-semibold">
-                        <option value="classic">Modo Clásico (Descarte por Filtros)</option>
+                        <option value="classic">Modo Clásico (Preguntas externas + Filtros de descarte)</option>
                         <option value="table" selected>Modo Tabla (Estilo Intentos con Pistas y Filtros Automáticos)</option>
                     </select>
                 </div>
@@ -127,7 +127,7 @@
 
             <div id="host-controls" class="hidden">
                 <button onclick="startPokemonSelection()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-4 rounded-xl shadow-lg transition">
-                    🎮 Iniciar Selección de Pokémon
+                    🎮 Iniciar Partida
                 </button>
             </div>
             <div id="guest-waiting-msg" class="text-sm text-slate-400 italic">
@@ -135,7 +135,7 @@
             </div>
         </div>
 
-        <!-- VISTA 3: SELECCIÓN DE TU POKÉMON SECRETO -->
+        <!-- VISTA 3: SELECCIÓN DE TU POKÉMON SECRETO (SOLO MODO TABLA) -->
         <div id="view-select-secret" class="w-full max-w-4xl bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-2xl space-y-4 hidden">
             <div class="text-center space-y-1">
                 <h2 class="text-xl font-bold text-red-400">Elige tu Pokémon Secreto</h2>
@@ -144,6 +144,133 @@
             </div>
 
             <div id="secret-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 max-h-96 overflow-y-auto p-2 bg-slate-900 rounded-xl border border-slate-700"></div>
+        </div>
+
+        <!-- VISTA 4A: TABLERO MODO CLÁSICO -->
+        <div id="view-game-classic-mode" class="w-full max-w-6xl space-y-4 hidden">
+            <!-- Panel Superior con Indicador de Turno y Botón Finalizar Turno -->
+            <div class="bg-slate-800 border border-slate-700 rounded-xl p-4 flex flex-wrap justify-between items-center gap-4 shadow-lg">
+                <div class="flex items-center gap-3">
+                    <span class="text-xs text-slate-400 uppercase font-bold">Modo Clásico:</span>
+                    <span class="text-xs text-slate-300">Pregunta por WhatsApp o llamada y usa los filtros para descartar.</span>
+                </div>
+                
+                <div class="flex items-center gap-3">
+                    <div id="turn-indicator-classic" class="px-4 py-2 bg-slate-900 border border-amber-500 text-amber-400 font-bold text-xs rounded-xl shadow animate-pulse">
+                        ⏳ Esperando turno...
+                    </div>
+                    <button onclick="finishClassicTurn()" id="btn-finish-turn" class="bg-blue-600 hover:bg-blue-500 text-white font-bold px-4 py-2 rounded-xl shadow text-xs transition hidden">
+                        🔄 Terminar Turno
+                    </button>
+                </div>
+            </div>
+
+            <!-- DESCARTE RÁPIDO POR ATRIBUTOS (MODO CLÁSICO) -->
+            <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 shadow-xl space-y-3">
+                <div class="text-xs font-bold text-slate-300 uppercase flex justify-between items-center">
+                    <span>⚡ Filtros de Descarte Rápido:</span>
+                    <button onclick="resetClassicFilters()" class="text-[10px] text-red-400 hover:underline">Restaurar Todos</button>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                    <!-- Filtro por Tipo -->
+                    <div class="bg-slate-900 p-2.5 rounded-xl border border-slate-700 flex items-center justify-between gap-2">
+                        <select id="qc-type" class="bg-slate-950 border border-slate-700 text-xs text-white rounded px-2 py-1.5 w-full focus:outline-none focus:border-red-500">
+                            <option value="">Tipo...</option>
+                            <option value="normal">Normal</option>
+                            <option value="fire">Fuego</option>
+                            <option value="water">Agua</option>
+                            <option value="grass">Planta</option>
+                            <option value="electric">Eléctrico</option>
+                            <option value="ice">Hielo</option>
+                            <option value="fighting">Lucha</option>
+                            <option value="poison">Veneno</option>
+                            <option value="ground">Tierra</option>
+                            <option value="flying">Volador</option>
+                            <option value="psychic">Psíquico</option>
+                            <option value="bug">Bicho</option>
+                            <option value="rock">Roca</option>
+                            <option value="ghost">Fantasma</option>
+                            <option value="dragon">Dragón</option>
+                            <option value="steel">Acero</option>
+                            <option value="fairy">Hada</option>
+                            <option value="dark">Siniestro</option>
+                        </select>
+                        <div class="flex items-center gap-1">
+                            <button onclick="applyClassicFilter('type', 'eliminate')" title="Descartar este tipo" class="bg-red-900/80 hover:bg-red-700 text-white w-6 h-6 rounded flex items-center justify-center text-xs font-bold">✕</button>
+                            <button onclick="applyClassicFilter('type', 'keep')" title="Quedarse solo con este tipo" class="bg-emerald-900/80 hover:bg-emerald-700 text-white w-6 h-6 rounded flex items-center justify-center text-xs font-bold">✓</button>
+                            <button onclick="applyClassicFilter('type', 'eliminate-not')" title="Descartar NO este tipo" class="bg-purple-900/80 hover:bg-purple-700 text-white w-6 h-6 rounded flex items-center justify-center text-xs font-bold">?</button>
+                        </div>
+                    </div>
+
+                    <!-- Filtro por Color -->
+                    <div class="bg-slate-900 p-2.5 rounded-xl border border-slate-700 flex items-center justify-between gap-2">
+                        <select id="qc-color" class="bg-slate-950 border border-slate-700 text-xs text-white rounded px-2 py-1.5 w-full focus:outline-none focus:border-red-500">
+                            <option value="">Color...</option>
+                            <option value="black">Negro</option>
+                            <option value="blue">Azul</option>
+                            <option value="brown">Marrón</option>
+                            <option value="gray">Gris</option>
+                            <option value="green">Verde</option>
+                            <option value="pink">Rosa</option>
+                            <option value="purple">Morado</option>
+                            <option value="red">Rojo</option>
+                            <option value="white">Blanco</option>
+                            <option value="yellow">Amarillo</option>
+                        </select>
+                        <div class="flex items-center gap-1">
+                            <button onclick="applyClassicFilter('color', 'eliminate')" title="Descartar este color" class="bg-red-900/80 hover:bg-red-700 text-white w-6 h-6 rounded flex items-center justify-center text-xs font-bold">✕</button>
+                            <button onclick="applyClassicFilter('color', 'keep')" title="Quedarse solo con este color" class="bg-emerald-900/80 hover:bg-emerald-700 text-white w-6 h-6 rounded flex items-center justify-center text-xs font-bold">✓</button>
+                            <button onclick="applyClassicFilter('color', 'eliminate-not')" title="Descartar NO este color" class="bg-purple-900/80 hover:bg-purple-700 text-white w-6 h-6 rounded flex items-center justify-center text-xs font-bold">?</button>
+                        </div>
+                    </div>
+
+                    <!-- Filtro por Fase Evolutiva -->
+                    <div class="bg-slate-900 p-2.5 rounded-xl border border-slate-700 flex items-center justify-between gap-2">
+                        <select id="qc-stage" class="bg-slate-950 border border-slate-700 text-xs text-white rounded px-2 py-1.5 w-full focus:outline-none focus:border-red-500">
+                            <option value="">Fase Evolutiva...</option>
+                            <option value="Única">Única</option>
+                            <option value="Fase 1 (Base)">Fase 1 (Base)</option>
+                            <option value="Fase 2">Fase 2</option>
+                            <option value="Fase 3">Fase 3</option>
+                        </select>
+                        <div class="flex items-center gap-1">
+                            <button onclick="applyClassicFilter('stage', 'eliminate')" title="Descartar esta fase" class="bg-red-900/80 hover:bg-red-700 text-white w-6 h-6 rounded flex items-center justify-center text-xs font-bold">✕</button>
+                            <button onclick="applyClassicFilter('stage', 'keep')" title="Quedarse solo con esta fase" class="bg-emerald-900/80 hover:bg-emerald-700 text-white w-6 h-6 rounded flex items-center justify-center text-xs font-bold">✓</button>
+                            <button onclick="applyClassicFilter('stage', 'eliminate-not')" title="Descartar NO esta fase" class="bg-purple-900/80 hover:bg-purple-700 text-white w-6 h-6 rounded flex items-center justify-center text-xs font-bold">?</button>
+                        </div>
+                    </div>
+
+                    <!-- Filtro por Generación -->
+                    <div class="bg-slate-900 p-2.5 rounded-xl border border-slate-700 flex items-center justify-between gap-2">
+                        <select id="qc-gen" class="bg-slate-950 border border-slate-700 text-xs text-white rounded px-2 py-1.5 w-full focus:outline-none focus:border-red-500">
+                            <option value="">Generación...</option>
+                            <option value="1">Gen 1</option>
+                            <option value="2">Gen 2</option>
+                            <option value="3">Gen 3</option>
+                            <option value="4">Gen 4</option>
+                            <option value="5">Gen 5</option>
+                            <option value="6">Gen 6</option>
+                            <option value="7">Gen 7</option>
+                            <option value="8">Gen 8</option>
+                            <option value="9">Gen 9</option>
+                        </select>
+                        <div class="flex items-center gap-1">
+                            <button onclick="applyClassicFilter('gen', 'eliminate')" title="Descartar esta generación" class="bg-red-900/80 hover:bg-red-700 text-white w-6 h-6 rounded flex items-center justify-center text-xs font-bold">✕</button>
+                            <button onclick="applyClassicFilter('gen', 'keep')" title="Quedarse solo con esta generación" class="bg-emerald-900/80 hover:bg-emerald-700 text-white w-6 h-6 rounded flex items-center justify-center text-xs font-bold">✓</button>
+                            <button onclick="applyClassicFilter('gen', 'eliminate-not')" title="Descartar NO esta generación" class="bg-purple-900/80 hover:bg-purple-700 text-white w-6 h-6 rounded flex items-center justify-center text-xs font-bold">?</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Grilla del Tablero Clásico (Clic manual para tachar/destachar cartas) -->
+            <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 shadow-2xl">
+                <div class="mb-3 flex justify-between items-center px-2">
+                    <span class="text-xs font-bold text-slate-400 uppercase">Haz clic en un Pokémon para descartarlo manualmente (<span id="classic-remaining-count">0</span> restantes)</span>
+                    <input type="text" id="search-classic-board" placeholder="🔍 Filtrar candidatos..." oninput="filterClassicBoard()" class="px-3 py-1 bg-slate-900 border border-slate-700 rounded-lg text-white text-xs focus:outline-none focus:border-red-500 w-48">
+                </div>
+                <div id="classic-game-board-grid" class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2 max-h-96 overflow-y-auto p-1"></div>
+            </div>
         </div>
 
         <!-- VISTA 4B: TABLERO DE JUEGO MODO TABLA -->
@@ -161,7 +288,7 @@
                 </div>
             </div>
 
-            <!-- TABLERO DE DESCARTE RÁPIDO POR ATRIBUTOS (CON CONTROLES INDEPENDIENTES) -->
+            <!-- TABLERO DE DESCARTE RÁPIDO POR ATRIBUTOS (MODO TABLA) -->
             <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 shadow-xl space-y-3">
                 <div class="text-xs font-bold text-slate-300 uppercase flex justify-between items-center">
                     <span>⚡ Descarte Rápido por Atributos:</span>
@@ -425,7 +552,7 @@
         }
 
         function showView(viewId) {
-            ['view-lobby', 'view-waiting-room', 'view-select-secret', 'view-game-table-mode'].forEach(id => {
+            ['view-lobby', 'view-waiting-room', 'view-select-secret', 'view-game-classic-mode', 'view-game-table-mode'].forEach(id => {
                 document.getElementById(id).classList.add('hidden');
             });
             document.getElementById(viewId).classList.remove('hidden');
@@ -514,15 +641,16 @@
                 gameMode = data.mode || gameMode;
                 currentTurnIndex = data.turnIndex;
                 
-                initGamePool();
-                buildSecretSelectionGrid();
-                showView('view-select-secret');
+                initGame();
             } else if (data.type === 'SHARE_SECRET') {
                 opponentSecretPokemon = data.secret;
             } else if (data.type === 'PLAYER_WON') {
                 triggerGameOver(data.winnerName, data.pokemonName);
             } else if (data.type === 'TABLE_GUESS') {
                 addAttemptToTable('opponent', data.guessPokemon, mySecretPokemon);
+                currentTurnIndex = data.nextTurnIndex;
+                updateTurnState();
+            } else if (data.type === 'FINISH_CLASSIC_TURN') {
                 currentTurnIndex = data.nextTurnIndex;
                 updateTurnState();
             }
@@ -558,10 +686,24 @@
                 mode: gameMode 
             };
 
-            initGamePool();
-            buildSecretSelectionGrid();
-            showView('view-select-secret');
+            initGame();
             broadcast(startPayload);
+        }
+
+        function initGame() {
+            initGamePool();
+            const myId = peer.id;
+            const foundIdx = playersList.findIndex(p => p.id === myId);
+            myPlayerIndex = foundIdx !== -1 ? foundIdx : 0;
+
+            if (gameMode === 'classic') {
+                buildClassicGameBoard();
+                showView('view-game-classic-mode');
+                updateTurnState();
+            } else {
+                buildSecretSelectionGrid();
+                showView('view-select-secret');
+            }
         }
 
         function initGamePool() {
@@ -611,6 +753,108 @@
             return 'Única';
         }
 
+        // --- MODO CLÁSICO ---
+        async function buildClassicGameBoard(filter = "") {
+            const grid = document.getElementById('classic-game-board-grid');
+            grid.innerHTML = '<div class="col-span-full text-center text-xs text-slate-400 py-4">Cargando tablero...</div>';
+
+            const filtered = activePokemonPool.filter(p => p.name.includes(filter.toLowerCase()));
+            grid.innerHTML = '';
+
+            for (let p of filtered) {
+                await enrichPokemonData(p);
+                const card = document.createElement('div');
+                card.className = "pokemon-card bg-slate-900 border border-slate-700 rounded-xl p-2 flex flex-col items-center justify-between text-xs h-28 cursor-pointer hover:border-red-500 transition";
+                
+                card.dataset.id = p.id;
+                card.dataset.color = p.color;
+                card.dataset.stage = p.stage;
+                card.dataset.gen = p.gen;
+                card.dataset.types = JSON.stringify(p.types);
+
+                card.innerHTML = `
+                    <span class="text-[9px] text-slate-400 font-mono">#${String(p.id).padStart(3, '0')}</span>
+                    <img src="${p.sprite}" class="w-14 h-14 object-contain pointer-events-none">
+                    <span class="font-bold text-[10px] truncate pointer-events-none">${p.displayName}</span>
+                `;
+
+                // Clic manual en modo clásico para tachar o destachar cartas
+                card.onclick = () => {
+                    card.classList.toggle('opacity-30');
+                    card.classList.toggle('bg-red-950/40');
+                    card.classList.toggle('border-red-800');
+                    card.classList.toggle('line-through');
+                };
+
+                grid.appendChild(card);
+            }
+            updateClassicRemainingCount();
+        }
+
+        function filterClassicBoard() {
+            buildClassicGameBoard(document.getElementById('search-classic-board').value);
+        }
+
+        function updateClassicRemainingCount() {
+            const total = document.querySelectorAll('.pokemon-card').length;
+            const eliminated = document.querySelectorAll('.pokemon-card.opacity-30').length;
+            document.getElementById('classic-remaining-count').innerText = total - eliminated;
+        }
+
+        function applyClassicFilter(field, action) {
+            const val = document.getElementById(`qc-${field}`).value;
+            if (!val) {
+                alert("Selecciona un valor primero para filtrar.");
+                return;
+            }
+
+            document.querySelectorAll('.pokemon-card').forEach(card => {
+                let match = false;
+                if (field === 'type') {
+                    const types = JSON.parse(card.dataset.types || '[]');
+                    match = types.includes(val);
+                } else if (field === 'color') {
+                    match = card.dataset.color === val;
+                } else if (field === 'stage') {
+                    match = card.dataset.stage === val;
+                } else if (field === 'gen') {
+                    match = parseInt(card.dataset.gen) === parseInt(val);
+                }
+
+                if (action === 'eliminate' && match) {
+                    card.classList.add('opacity-30', 'bg-red-950/40', 'border-red-800');
+                } else if (action === 'keep' && !match) {
+                    card.classList.add('opacity-30', 'bg-red-950/40', 'border-red-800');
+                } else if (action === 'eliminate-not' && !match) {
+                    card.classList.add('opacity-30', 'bg-red-950/40', 'border-red-800');
+                }
+            });
+            updateClassicRemainingCount();
+        }
+
+        function resetClassicFilters() {
+            document.querySelectorAll('.pokemon-card').forEach(card => {
+                card.classList.remove('opacity-30', 'bg-red-950/40', 'border-red-800');
+            });
+            ['type', 'color', 'stage', 'gen'].forEach(f => {
+                document.getElementById(`qc-${f}`).value = '';
+            });
+            updateClassicRemainingCount();
+        }
+
+        function finishClassicTurn() {
+            const nextTurn = (currentTurnIndex + 1) % playersList.length;
+            const payload = { type: 'FINISH_CLASSIC_TURN', nextTurnIndex: nextTurn };
+            
+            if (isHost) broadcast(payload);
+            else if (conn && conn.open) conn.send(payload);
+
+            currentTurnIndex = nextTurn;
+            updateTurnState();
+        }
+
+
+        // --- MODO TABLA ---
         async function buildSecretSelectionGrid(filter = "") {
             const grid = document.getElementById('secret-grid');
             grid.innerHTML = '<div class="col-span-full text-center text-xs text-slate-400 py-4">Cargando Pokémon...</div>';
@@ -660,30 +904,38 @@
                     <span class="text-slate-300 text-[10px] mt-0.5">Gen ${pokemon.gen} | 🎨 ${colorEsp} | ${pokemon.stage} | ⚖️ ${pokemon.weight}kg | 📏 ${pokemon.height}m</span>
                 </div>
             `;
-            
-            const myId = peer.id;
-            const foundIdx = playersList.findIndex(p => p.id === myId);
-            myPlayerIndex = foundIdx !== -1 ? foundIdx : 0;
 
-            if (gameMode === 'table') {
-                buildTableGameBoard();
-                showView('view-game-table-mode');
-            } else {
-                showView('view-game-table-mode');
-            }
+            buildTableGameBoard();
+            showView('view-game-table-mode');
             updateTurnState();
         }
 
         function updateTurnState() {
             isMyTurn = (currentTurnIndex === myPlayerIndex);
-            const indicator = document.getElementById('turn-indicator');
-            if (isMyTurn) {
-                indicator.innerText = "⭐ ¡Es tu turno para arriesgar!";
-                indicator.className = "px-4 py-2 bg-emerald-950 border border-emerald-500 text-emerald-400 font-bold text-xs rounded-xl shadow";
+            
+            if (gameMode === 'classic') {
+                const indicator = document.getElementById('turn-indicator-classic');
+                const btnFinish = document.getElementById('btn-finish-turn');
+                if (isMyTurn) {
+                    indicator.innerText = "⭐ ¡Es tu turno de preguntar!";
+                    indicator.className = "px-4 py-2 bg-emerald-950 border border-emerald-500 text-emerald-400 font-bold text-xs rounded-xl shadow";
+                    btnFinish.classList.remove('hidden');
+                } else {
+                    const currentName = playersList[currentTurnIndex]?.name || "Oponente";
+                    indicator.innerText = `⏳ Turno de ${currentName}...`;
+                    indicator.className = "px-4 py-2 bg-slate-900 border border-amber-500 text-amber-400 font-bold text-xs rounded-xl shadow animate-pulse";
+                    btnFinish.classList.add('hidden');
+                }
             } else {
-                const currentName = playersList[currentTurnIndex]?.name || "Oponente";
-                indicator.innerText = `⏳ Turno de ${currentName}...`;
-                indicator.className = "px-4 py-2 bg-slate-900 border border-amber-500 text-amber-400 font-bold text-xs rounded-xl shadow animate-pulse";
+                const indicator = document.getElementById('turn-indicator');
+                if (isMyTurn) {
+                    indicator.innerText = "⭐ ¡Es tu turno para arriesgar!";
+                    indicator.className = "px-4 py-2 bg-emerald-950 border border-emerald-500 text-emerald-400 font-bold text-xs rounded-xl shadow";
+                } else {
+                    const currentName = playersList[currentTurnIndex]?.name || "Oponente";
+                    indicator.innerText = `⏳ Turno de ${currentName}...`;
+                    indicator.className = "px-4 py-2 bg-slate-900 border border-amber-500 text-amber-400 font-bold text-xs rounded-xl shadow animate-pulse";
+                }
             }
         }
 
@@ -736,7 +988,7 @@
             document.getElementById('table-remaining-count').innerText = total - eliminated;
         }
 
-        // LÓGICA DE FILTROS RÁPIDOS INDEPENDIENTES
+        // Filtros rápidos específicos del Modo Tabla
         function applyQuickFilter(field, action) {
             const val = document.getElementById(`qf-${field}`).value;
             if (!val) {
