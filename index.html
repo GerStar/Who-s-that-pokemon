@@ -161,6 +161,128 @@
                 </div>
             </div>
 
+            <!-- TABLERO DE DESCARTE RÁPIDO POR ATRIBUTOS (CON CONTROLES INDEPENDIENTES) -->
+            <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 shadow-xl space-y-3">
+                <div class="text-xs font-bold text-slate-300 uppercase flex justify-between items-center">
+                    <span>⚡ Descarte Rápido por Atributos:</span>
+                    <button onclick="resetQuickFilters()" class="text-[10px] text-red-400 hover:underline">Limpiar Filtros</button>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                    <!-- Filtro por Tipo -->
+                    <div class="bg-slate-900 p-2.5 rounded-xl border border-slate-700 flex items-center justify-between gap-2">
+                        <select id="qf-type" class="bg-slate-950 border border-slate-700 text-xs text-white rounded px-2 py-1.5 w-full focus:outline-none focus:border-red-500">
+                            <option value="">Tipo...</option>
+                            <option value="normal">Normal</option>
+                            <option value="fire">Fuego</option>
+                            <option value="water">Agua</option>
+                            <option value="grass">Planta</option>
+                            <option value="electric">Eléctrico</option>
+                            <option value="ice">Hielo</option>
+                            <option value="fighting">Lucha</option>
+                            <option value="poison">Veneno</option>
+                            <option value="ground">Tierra</option>
+                            <option value="flying">Volador</option>
+                            <option value="psychic">Psíquico</option>
+                            <option value="bug">Bicho</option>
+                            <option value="rock">Roca</option>
+                            <option value="ghost">Fantasma</option>
+                            <option value="dragon">Dragón</option>
+                            <option value="steel">Acero</option>
+                            <option value="fairy">Hada</option>
+                            <option value="dark">Siniestro</option>
+                        </select>
+                        <div class="flex items-center gap-1">
+                            <button onclick="applyQuickFilter('type', 'eliminate')" title="Descartar este tipo" class="bg-red-900/80 hover:bg-red-700 text-white w-6 h-6 rounded flex items-center justify-center text-xs font-bold">✕</button>
+                            <button onclick="applyQuickFilter('type', 'keep')" title="Quedarse solo con este tipo" class="bg-emerald-900/80 hover:bg-emerald-700 text-white w-6 h-6 rounded flex items-center justify-center text-xs font-bold">✓</button>
+                            <button onclick="applyQuickFilter('type', 'eliminate-not')" title="Descartar NO este tipo" class="bg-purple-900/80 hover:bg-purple-700 text-white w-6 h-6 rounded flex items-center justify-center text-xs font-bold">?</button>
+                        </div>
+                    </div>
+
+                    <!-- Filtro por Color -->
+                    <div class="bg-slate-900 p-2.5 rounded-xl border border-slate-700 flex items-center justify-between gap-2">
+                        <select id="qf-color" class="bg-slate-950 border border-slate-700 text-xs text-white rounded px-2 py-1.5 w-full focus:outline-none focus:border-red-500">
+                            <option value="">Color...</option>
+                            <option value="black">Negro</option>
+                            <option value="blue">Azul</option>
+                            <option value="brown">Marrón</option>
+                            <option value="gray">Gris</option>
+                            <option value="green">Verde</option>
+                            <option value="pink">Rosa</option>
+                            <option value="purple">Morado</option>
+                            <option value="red">Rojo</option>
+                            <option value="white">Blanco</option>
+                            <option value="yellow">Amarillo</option>
+                        </select>
+                        <div class="flex items-center gap-1">
+                            <button onclick="applyQuickFilter('color', 'eliminate')" title="Descartar este color" class="bg-red-900/80 hover:bg-red-700 text-white w-6 h-6 rounded flex items-center justify-center text-xs font-bold">✕</button>
+                            <button onclick="applyQuickFilter('color', 'keep')" title="Quedarse solo con este color" class="bg-emerald-900/80 hover:bg-emerald-700 text-white w-6 h-6 rounded flex items-center justify-center text-xs font-bold">✓</button>
+                            <button onclick="applyQuickFilter('color', 'eliminate-not')" title="Descartar NO este color" class="bg-purple-900/80 hover:bg-purple-700 text-white w-6 h-6 rounded flex items-center justify-center text-xs font-bold">?</button>
+                        </div>
+                    </div>
+
+                    <!-- Filtro por Fase Evolutiva -->
+                    <div class="bg-slate-900 p-2.5 rounded-xl border border-slate-700 flex items-center justify-between gap-2">
+                        <select id="qf-stage" class="bg-slate-950 border border-slate-700 text-xs text-white rounded px-2 py-1.5 w-full focus:outline-none focus:border-red-500">
+                            <option value="">Fase Evolutiva...</option>
+                            <option value="Única">Única</option>
+                            <option value="Fase 1 (Base)">Fase 1 (Base)</option>
+                            <option value="Fase 2">Fase 2</option>
+                            <option value="Fase 3">Fase 3</option>
+                        </select>
+                        <div class="flex items-center gap-1">
+                            <button onclick="applyQuickFilter('stage', 'eliminate')" title="Descartar esta fase" class="bg-red-900/80 hover:bg-red-700 text-white w-6 h-6 rounded flex items-center justify-center text-xs font-bold">✕</button>
+                            <button onclick="applyQuickFilter('stage', 'keep')" title="Quedarse solo con esta fase" class="bg-emerald-900/80 hover:bg-emerald-700 text-white w-6 h-6 rounded flex items-center justify-center text-xs font-bold">✓</button>
+                            <button onclick="applyQuickFilter('stage', 'eliminate-not')" title="Descartar NO esta fase" class="bg-purple-900/80 hover:bg-purple-700 text-white w-6 h-6 rounded flex items-center justify-center text-xs font-bold">?</button>
+                        </div>
+                    </div>
+
+                    <!-- Filtro por Generación -->
+                    <div class="bg-slate-900 p-2.5 rounded-xl border border-slate-700 flex items-center justify-between gap-2">
+                        <select id="qf-gen" class="bg-slate-950 border border-slate-700 text-xs text-white rounded px-2 py-1.5 w-full focus:outline-none focus:border-red-500">
+                            <option value="">Generación...</option>
+                            <option value="1">Gen 1</option>
+                            <option value="2">Gen 2</option>
+                            <option value="3">Gen 3</option>
+                            <option value="4">Gen 4</option>
+                            <option value="5">Gen 5</option>
+                            <option value="6">Gen 6</option>
+                            <option value="7">Gen 7</option>
+                            <option value="8">Gen 8</option>
+                            <option value="9">Gen 9</option>
+                        </select>
+                        <div class="flex items-center gap-1">
+                            <button onclick="applyQuickFilter('gen', 'eliminate')" title="Descartar esta generación" class="bg-red-900/80 hover:bg-red-700 text-white w-6 h-6 rounded flex items-center justify-center text-xs font-bold">✕</button>
+                            <button onclick="applyQuickFilter('gen', 'keep')" title="Quedarse solo con esta generación" class="bg-emerald-900/80 hover:bg-emerald-700 text-white w-6 h-6 rounded flex items-center justify-center text-xs font-bold">✓</button>
+                            <button onclick="applyQuickFilter('gen', 'eliminate-not')" title="Descartar NO esta generación" class="bg-purple-900/80 hover:bg-purple-700 text-white w-6 h-6 rounded flex items-center justify-center text-xs font-bold">?</button>
+                        </div>
+                    </div>
+
+                    <!-- Filtro por Peso -->
+                    <div class="bg-slate-900 p-2.5 rounded-xl border border-slate-700 flex items-center justify-between gap-2">
+                        <select id="qf-weight-op" class="bg-slate-950 border border-slate-700 text-xs text-white rounded px-1.5 py-1.5 focus:outline-none focus:border-red-500">
+                            <option value=">">Pesa ></option>
+                            <option value="<">Pesa <</option>
+                            <option value="=">Pesa =</option>
+                        </select>
+                        <input type="number" id="qf-weight-val" placeholder="kg" step="0.1" class="bg-slate-950 border border-slate-700 text-xs text-white rounded px-2 py-1.5 w-16 text-center focus:outline-none focus:border-red-500">
+                        <button onclick="applyNumericFilter('weight')" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-2.5 py-1.5 rounded">Aplicar</button>
+                        <button onclick="clearNumericFilter('weight')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 w-6 h-6 rounded flex items-center justify-center text-xs font-bold">✕</button>
+                    </div>
+
+                    <!-- Filtro por Altura -->
+                    <div class="bg-slate-900 p-2.5 rounded-xl border border-slate-700 flex items-center justify-between gap-2">
+                        <select id="qf-height-op" class="bg-slate-950 border border-slate-700 text-xs text-white rounded px-1.5 py-1.5 focus:outline-none focus:border-red-500">
+                            <option value=">">Mide ></option>
+                            <option value="<">Mide <</option>
+                            <option value="=">Mide =</option>
+                        </select>
+                        <input type="number" id="qf-height-val" placeholder="m" step="0.1" class="bg-slate-950 border border-slate-700 text-xs text-white rounded px-2 py-1.5 w-16 text-center focus:outline-none focus:border-red-500">
+                        <button onclick="applyNumericFilter('height')" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-2.5 py-1.5 rounded">Aplicar</button>
+                        <button onclick="clearNumericFilter('height')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 w-6 h-6 rounded flex items-center justify-center text-xs font-bold">✕</button>
+                    </div>
+                </div>
+            </div>
+
             <!-- Tablas de Seguimiento -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <!-- Tu Tabla de Intentos -->
@@ -577,7 +699,6 @@
                 const card = document.createElement('div');
                 card.className = "pokemon-card-table bg-slate-900 border border-slate-700 rounded-xl p-1 flex flex-col items-center justify-between text-xs h-28 cursor-pointer hover:border-amber-500 transition";
                 
-                // Guardamos todos los atributos en el dataset para los filtros automáticos
                 card.dataset.id = p.id;
                 card.dataset.weight = p.weight;
                 card.dataset.height = p.height;
@@ -613,6 +734,77 @@
             const total = document.querySelectorAll('.pokemon-card-table').length;
             const eliminated = document.querySelectorAll('.pokemon-card-table.eliminated').length;
             document.getElementById('table-remaining-count').innerText = total - eliminated;
+        }
+
+        // LÓGICA DE FILTROS RÁPIDOS INDEPENDIENTES
+        function applyQuickFilter(field, action) {
+            const val = document.getElementById(`qf-${field}`).value;
+            if (!val) {
+                alert("Selecciona un valor primero para filtrar.");
+                return;
+            }
+
+            document.querySelectorAll('.pokemon-card-table').forEach(card => {
+                let match = false;
+                if (field === 'type') {
+                    const types = JSON.parse(card.dataset.types || '[]');
+                    match = types.includes(val);
+                } else if (field === 'color') {
+                    match = card.dataset.color === val;
+                } else if (field === 'stage') {
+                    match = card.dataset.stage === val;
+                } else if (field === 'gen') {
+                    match = parseInt(card.dataset.gen) === parseInt(val);
+                }
+
+                if (action === 'eliminate' && match) {
+                    card.classList.add('eliminated');
+                } else if (action === 'keep' && !match) {
+                    card.classList.add('eliminated');
+                } else if (action === 'eliminate-not' && !match) {
+                    card.classList.add('eliminated');
+                }
+            });
+            updateTableRemainingCount();
+        }
+
+        function applyNumericFilter(field) {
+            const op = document.getElementById(`qf-${field}-op`).value;
+            const val = parseFloat(document.getElementById(`qf-${field}-val`).value);
+            if (isNaN(val)) {
+                alert("Ingresa un valor numérico válido.");
+                return;
+            }
+
+            document.querySelectorAll('.pokemon-card-table').forEach(card => {
+                const cardVal = parseFloat(card.dataset[field]);
+                let match = false;
+                if (op === '>') match = cardVal > val;
+                else if (op === '<') match = cardVal < val;
+                else if (op === '=') match = cardVal === val;
+
+                if (!match) {
+                    card.classList.add('eliminated');
+                }
+            });
+            updateTableRemainingCount();
+        }
+
+        function clearNumericFilter(field) {
+            document.getElementById(`qf-${field}-val`).value = '';
+        }
+
+        function resetQuickFilters() {
+            document.querySelectorAll('.pokemon-card-table').forEach(card => {
+                card.classList.remove('eliminated');
+            });
+            ['type', 'color', 'stage', 'gen'].forEach(f => {
+                document.getElementById(`qf-${f}`).value = '';
+            });
+            ['weight', 'height'].forEach(f => {
+                document.getElementById(`qf-${f}-val`).value = '';
+            });
+            updateTableRemainingCount();
         }
 
         async function submitTableGuess(pokemon) {
@@ -732,33 +924,28 @@
                 
                 let eliminate = false;
 
-                // 1. Si el pokémon es el mismo que intentaste y no era el secreto
                 if (cardId === guessed.id && guessed.id !== secret.id) {
                     eliminate = true;
                 }
 
-                // 2. Filtro por Generación
                 if (guessed.gen === secret.gen) {
                     if (gen !== secret.gen) eliminate = true;
                 } else {
                     if (gen === guessed.gen) eliminate = true;
                 }
 
-                // 3. Filtro por Color
                 if (guessed.color === secret.color) {
                     if (color !== secret.color) eliminate = true;
                 } else {
                     if (color === guessed.color) eliminate = true;
                 }
 
-                // 4. Filtro por Etapa Evolutiva
                 if (guessed.stage === secret.stage) {
                     if (stage !== secret.stage) eliminate = true;
                 } else {
                     if (stage === guessed.stage) eliminate = true;
                 }
 
-                // 5. Filtro por Tipos
                 const secretTypes = secret.types;
                 const guessedTypes = guessed.types;
                 
@@ -772,7 +959,6 @@
                     if (hasCommonGuessedType) eliminate = true;
                 }
 
-                // 6. Filtros de Peso y Altura
                 if (guessed.weight < secret.weight && w <= guessed.weight) eliminate = true;
                 if (guessed.weight > secret.weight && w >= guessed.weight) eliminate = true;
                 if (guessed.weight === secret.weight && w !== secret.weight) eliminate = true;
