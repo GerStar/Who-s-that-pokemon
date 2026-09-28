@@ -3,16 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Who's That Pokémon? - Multijugador</title>
+    <title>Who's That Pokémon? - Versión Definitiva con Modo Tabla</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- PeerJS para conexión P2P -->
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <style>
-        .pokemon-card, .pokemon-card-table {
+        .pokemon-card {
             transition: all 0.2s ease-in-out;
         }
-        .pokemon-card.eliminated, .pokemon-card-table.eliminated {
+        .pokemon-card.eliminated {
             display: none !important;
         }
         .match-success {
@@ -31,8 +31,8 @@
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen font-sans flex flex-col items-center justify-between">
 
-    <!-- HEADER -->
-    <header class="w-full bg-slate-950/85 backdrop-blur-md border-b border-red-600/40 shadow-xl py-3 px-6 flex justify-between items-center sticky top-0 z-40">
+    <!-- HEADER CON LOGOTIPO Y POKÉBOLA -->
+    <header class="w-full bg-slate-950/80 backdrop-blur-md border-b border-red-600/40 shadow-xl py-3 px-6 flex justify-between items-center sticky top-0 z-40">
         <div class="flex items-center gap-3">
             <div class="relative w-10 h-10 bg-red-600 rounded-full border-2 border-slate-900 overflow-hidden flex flex-col shadow-[0_0_12px_rgba(239,68,68,0.6)]">
                 <div class="w-full h-1/2 bg-red-600"></div>
@@ -68,14 +68,16 @@
                     <input type="text" id="input-username" placeholder="Ej. Ash Ketchum" class="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-red-500 text-center font-bold">
                 </div>
 
+                <!-- SELECCIÓN DE MODALIDAD DE JUEGO -->
                 <div>
                     <label class="block text-xs font-semibold text-slate-400 mb-1">Modalidad de Juego:</label>
                     <select id="select-game-mode" class="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-red-500 text-sm font-semibold">
-                        <option value="classic">Modo Clásico (Preguntas externas + Filtros de descarte)</option>
-                        <option value="table" selected>Modo Tabla (Estilo Intentos con Pistas y Filtros Automáticos)</option>
+                        <option value="classic">Modo Clásico (Descarte por Filtros)</option>
+                        <option value="table">Modo Tabla (Estilo Intentos con Pistas y Filtros Automáticos)</option>
                     </select>
                 </div>
 
+                <!-- SELECCIÓN DE GENERACIONES -->
                 <div class="space-y-2 bg-slate-900/60 p-3 rounded-xl border border-slate-700">
                     <div class="flex justify-between items-center">
                         <span class="text-xs font-bold text-slate-300 uppercase">Generaciones a incluir:</span>
@@ -111,13 +113,13 @@
             </div>
         </div>
 
-        <!-- VISTA 2: SALA DE ESPERA -->
+        <!-- VISTA 2: SALA DE ESPERA (LOBBY) -->
         <div id="view-waiting-room" class="w-full max-w-lg bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-2xl text-center space-y-6 hidden">
             <div>
                 <h2 class="text-xl font-bold text-red-400">Sala de Espera</h2>
                 <p class="text-xs text-slate-400 mt-1">Comparte este código con tus amigos:</p>
                 <div id="display-room-code" class="text-3xl font-mono font-black text-amber-400 bg-slate-900 py-3 rounded-xl border border-slate-700 tracking-wider mt-2 select-all">-----</div>
-                <p id="display-selected-mode" class="text-xs text-emerald-400 font-bold mt-2">Modalidad: Modo Tabla</p>
+                <p id="display-selected-mode" class="text-xs text-emerald-400 font-bold mt-2">Modalidad: Clásica</p>
             </div>
 
             <div class="space-y-2 text-left">
@@ -127,7 +129,7 @@
 
             <div id="host-controls" class="hidden">
                 <button onclick="startPokemonSelection()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-4 rounded-xl shadow-lg transition">
-                    🎮 Iniciar Partida
+                    🎮 Iniciar Selección de Pokémon
                 </button>
             </div>
             <div id="guest-waiting-msg" class="text-sm text-slate-400 italic">
@@ -135,7 +137,7 @@
             </div>
         </div>
 
-        <!-- VISTA 3: SELECCIÓN DE TU POKÉMON SECRETO (SOLO MODO TABLA) -->
+        <!-- VISTA 3: SELECCIÓN DE TU POKÉMON SECRETO -->
         <div id="view-select-secret" class="w-full max-w-4xl bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-2xl space-y-4 hidden">
             <div class="text-center space-y-1">
                 <h2 class="text-xl font-bold text-red-400">Elige tu Pokémon Secreto</h2>
@@ -146,267 +148,119 @@
             <div id="secret-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 max-h-96 overflow-y-auto p-2 bg-slate-900 rounded-xl border border-slate-700"></div>
         </div>
 
-        <!-- VISTA 4A: TABLERO MODO CLÁSICO -->
-        <div id="view-game-classic-mode" class="w-full max-w-6xl space-y-4 hidden">
-            <!-- Panel Superior con Indicador de Turno y Botón Finalizar Turno -->
+        <!-- VISTA 4A: TABLERO DE JUEGO MODO CLÁSICO -->
+        <div id="view-game-board" class="w-full max-w-6xl space-y-4 hidden">
             <div class="bg-slate-800 border border-slate-700 rounded-xl p-4 flex flex-wrap justify-between items-center gap-4 shadow-lg">
                 <div class="flex items-center gap-3">
-                    <span class="text-xs text-slate-400 uppercase font-bold">Modo Clásico:</span>
-                    <span class="text-xs text-slate-300">Pregunta por WhatsApp o llamada y usa los filtros para descartar.</span>
+                    <span class="text-xs text-slate-400 uppercase font-bold">Tu Secreto:</span>
+                    <div id="my-secret-preview" class="flex items-center gap-3 bg-slate-900 px-3 py-2 rounded-lg border border-slate-700"></div>
                 </div>
-                
-                <div class="flex items-center gap-3">
-                    <div id="turn-indicator-classic" class="px-4 py-2 bg-slate-900 border border-amber-500 text-amber-400 font-bold text-xs rounded-xl shadow animate-pulse">
-                        ⏳ Esperando turno...
-                    </div>
-                    <button onclick="finishClassicTurn()" id="btn-finish-turn" class="bg-blue-600 hover:bg-blue-500 text-white font-bold px-4 py-2 rounded-xl shadow text-xs transition hidden">
-                        🔄 Terminar Turno
+
+                <div class="flex flex-wrap gap-2">
+                    <button onclick="resetBoard()" class="bg-slate-700 hover:bg-slate-600 text-xs font-bold px-3 py-2 rounded-lg transition">
+                        🔄 Habilitar Todo
+                    </button>
+                    <button onclick="openGuessModal()" class="bg-amber-600 hover:bg-amber-500 text-xs font-bold px-3 py-2 rounded-lg shadow transition">
+                        🎯 Arriesgar
                     </button>
                 </div>
             </div>
 
-            <!-- DESCARTE RÁPIDO POR ATRIBUTOS (MODO CLÁSICO) -->
-            <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 shadow-xl space-y-3">
-                <div class="text-xs font-bold text-slate-300 uppercase flex justify-between items-center">
-                    <span>⚡ Filtros de Descarte Rápido:</span>
-                    <button onclick="resetClassicFilters()" class="text-[10px] text-red-400 hover:underline">Restaurar Todos</button>
+            <!-- BOTONES DE DESCARTE RÁPIDO CLÁSICO -->
+            <div class="bg-slate-800 border border-slate-700 rounded-xl p-3 space-y-3 shadow">
+                <div class="flex justify-between items-center">
+                    <span class="text-xs font-bold text-slate-400 uppercase">Descarte Rápido por Atributos:</span>
+                    <span id="active-filters-indicator" class="text-[10px] text-amber-400 font-semibold hidden">Filtros activos aplicados</span>
                 </div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                    <!-- Filtro por Tipo -->
-                    <div class="bg-slate-900 p-2.5 rounded-xl border border-slate-700 flex items-center justify-between gap-2">
-                        <select id="qc-type" class="bg-slate-950 border border-slate-700 text-xs text-white rounded px-2 py-1.5 w-full focus:outline-none focus:border-red-500">
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 text-xs">
+                    <div id="container-filter-type" class="flex items-center gap-1 bg-slate-900 p-2 rounded-lg border border-slate-700 transition-colors">
+                        <select id="filter-type" class="bg-slate-800 border border-slate-700 px-2 py-1 rounded text-white flex-grow">
                             <option value="">Tipo...</option>
-                            <option value="normal">Normal</option>
-                            <option value="fire">Fuego</option>
-                            <option value="water">Agua</option>
-                            <option value="grass">Planta</option>
-                            <option value="electric">Eléctrico</option>
-                            <option value="ice">Hielo</option>
-                            <option value="fighting">Lucha</option>
-                            <option value="poison">Veneno</option>
-                            <option value="ground">Tierra</option>
-                            <option value="flying">Volador</option>
-                            <option value="psychic">Psíquico</option>
-                            <option value="bug">Bicho</option>
-                            <option value="rock">Roca</option>
-                            <option value="ghost">Fantasma</option>
-                            <option value="dragon">Dragón</option>
-                            <option value="steel">Acero</option>
-                            <option value="fairy">Hada</option>
-                            <option value="dark">Siniestro</option>
+                            <option value="normal">Normal</option><option value="fire">Fuego</option><option value="water">Agua</option><option value="grass">Planta</option><option value="electric">Eléctrico</option><option value="ice">Hielo</option><option value="fighting">Lucha</option><option value="poison">Veneno</option><option value="ground">Tierra</option><option value="flying">Volador</option><option value="psychic">Psíquico</option><option value="bug">Bicho</option><option value="rock">Roca</option><option value="ghost">Fantasma</option><option value="dragon">Dragón</option><option value="steel">Acero</option><option value="fairy">Hada</option>
                         </select>
-                        <div class="flex items-center gap-1">
-                            <button onclick="applyClassicFilter('type', 'eliminate')" title="Descartar este tipo" class="bg-red-900/80 hover:bg-red-700 text-white w-6 h-6 rounded flex items-center justify-center text-xs font-bold">✕</button>
-                            <button onclick="applyClassicFilter('type', 'keep')" title="Quedarse solo con este tipo" class="bg-emerald-900/80 hover:bg-emerald-700 text-white w-6 h-6 rounded flex items-center justify-center text-xs font-bold">✓</button>
-                            <button onclick="applyClassicFilter('type', 'eliminate-not')" title="Descartar NO este tipo" class="bg-purple-900/80 hover:bg-purple-700 text-white w-6 h-6 rounded flex items-center justify-center text-xs font-bold">?</button>
-                        </div>
+                        <button onclick="eliminateByType(true)" class="bg-red-900/60 hover:bg-red-800 text-red-200 px-2 py-1 rounded font-semibold" title="Descartar este tipo">❌</button>
+                        <button onclick="eliminateByType(false)" class="bg-emerald-900/60 hover:bg-emerald-800 text-emerald-200 px-2 py-1 rounded font-semibold" title="Descartar NO este tipo">✅</button>
+                        <button onclick="undoFilter('type')" class="bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded font-bold">✖</button>
                     </div>
 
-                    <!-- Filtro por Color -->
-                    <div class="bg-slate-900 p-2.5 rounded-xl border border-slate-700 flex items-center justify-between gap-2">
-                        <select id="qc-color" class="bg-slate-950 border border-slate-700 text-xs text-white rounded px-2 py-1.5 w-full focus:outline-none focus:border-red-500">
+                    <div id="container-filter-color" class="flex items-center gap-1 bg-slate-900 p-2 rounded-lg border border-slate-700 transition-colors">
+                        <select id="filter-color" class="bg-slate-800 border border-slate-700 px-2 py-1 rounded text-white flex-grow capitalize">
                             <option value="">Color...</option>
-                            <option value="black">Negro</option>
-                            <option value="blue">Azul</option>
-                            <option value="brown">Marrón</option>
-                            <option value="gray">Gris</option>
-                            <option value="green">Verde</option>
-                            <option value="pink">Rosa</option>
-                            <option value="purple">Morado</option>
-                            <option value="red">Rojo</option>
-                            <option value="white">Blanco</option>
-                            <option value="yellow">Amarillo</option>
+                            <option value="black">Negro</option><option value="blue">Azul</option><option value="brown">Marrón</option><option value="gray">Gris</option><option value="green">Verde</option><option value="pink">Rosa</option><option value="purple">Morado</option><option value="red">Rojo</option><option value="white">Blanco</option><option value="yellow">Amarillo</option>
                         </select>
-                        <div class="flex items-center gap-1">
-                            <button onclick="applyClassicFilter('color', 'eliminate')" title="Descartar este color" class="bg-red-900/80 hover:bg-red-700 text-white w-6 h-6 rounded flex items-center justify-center text-xs font-bold">✕</button>
-                            <button onclick="applyClassicFilter('color', 'keep')" title="Quedarse solo con este color" class="bg-emerald-900/80 hover:bg-emerald-700 text-white w-6 h-6 rounded flex items-center justify-center text-xs font-bold">✓</button>
-                            <button onclick="applyClassicFilter('color', 'eliminate-not')" title="Descartar NO este color" class="bg-purple-900/80 hover:bg-purple-700 text-white w-6 h-6 rounded flex items-center justify-center text-xs font-bold">?</button>
-                        </div>
+                        <button onclick="eliminateByColor(true)" class="bg-red-900/60 hover:bg-red-800 text-red-200 px-2 py-1 rounded font-semibold">❌</button>
+                        <button onclick="eliminateByColor(false)" class="bg-emerald-900/60 hover:bg-emerald-800 text-emerald-200 px-2 py-1 rounded font-semibold">✅</button>
+                        <button onclick="undoFilter('color')" class="bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded font-bold">✖</button>
                     </div>
 
-                    <!-- Filtro por Fase Evolutiva -->
-                    <div class="bg-slate-900 p-2.5 rounded-xl border border-slate-700 flex items-center justify-between gap-2">
-                        <select id="qc-stage" class="bg-slate-950 border border-slate-700 text-xs text-white rounded px-2 py-1.5 w-full focus:outline-none focus:border-red-500">
+                    <div id="container-filter-stage" class="flex items-center gap-1 bg-slate-900 p-2 rounded-lg border border-slate-700 transition-colors">
+                        <select id="filter-stage" class="bg-slate-800 border border-slate-700 px-2 py-1 rounded text-white flex-grow">
                             <option value="">Fase Evolutiva...</option>
-                            <option value="Única">Única</option>
                             <option value="Fase 1 (Base)">Fase 1 (Base)</option>
                             <option value="Fase 2">Fase 2</option>
                             <option value="Fase 3">Fase 3</option>
+                            <option value="Única">Única</option>
                         </select>
-                        <div class="flex items-center gap-1">
-                            <button onclick="applyClassicFilter('stage', 'eliminate')" title="Descartar esta fase" class="bg-red-900/80 hover:bg-red-700 text-white w-6 h-6 rounded flex items-center justify-center text-xs font-bold">✕</button>
-                            <button onclick="applyClassicFilter('stage', 'keep')" title="Quedarse solo con esta fase" class="bg-emerald-900/80 hover:bg-emerald-700 text-white w-6 h-6 rounded flex items-center justify-center text-xs font-bold">✓</button>
-                            <button onclick="applyClassicFilter('stage', 'eliminate-not')" title="Descartar NO esta fase" class="bg-purple-900/80 hover:bg-purple-700 text-white w-6 h-6 rounded flex items-center justify-center text-xs font-bold">?</button>
-                        </div>
+                        <button onclick="eliminateByStage(true)" class="bg-red-900/60 hover:bg-red-800 text-red-200 px-2 py-1 rounded font-semibold">❌</button>
+                        <button onclick="eliminateByStage(false)" class="bg-emerald-900/60 hover:bg-emerald-800 text-emerald-200 px-2 py-1 rounded font-semibold">✅</button>
+                        <button onclick="undoFilter('stage')" class="bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded font-bold">✖</button>
                     </div>
 
-                    <!-- Filtro por Generación -->
-                    <div class="bg-slate-900 p-2.5 rounded-xl border border-slate-700 flex items-center justify-between gap-2">
-                        <select id="qc-gen" class="bg-slate-950 border border-slate-700 text-xs text-white rounded px-2 py-1.5 w-full focus:outline-none focus:border-red-500">
+                    <div id="container-filter-gen" class="flex items-center gap-1 bg-slate-900 p-2 rounded-lg border border-slate-700 transition-colors">
+                        <select id="filter-gen" class="bg-slate-800 border border-slate-700 px-2 py-1 rounded text-white flex-grow">
                             <option value="">Generación...</option>
-                            <option value="1">Gen 1</option>
-                            <option value="2">Gen 2</option>
-                            <option value="3">Gen 3</option>
-                            <option value="4">Gen 4</option>
-                            <option value="5">Gen 5</option>
-                            <option value="6">Gen 6</option>
-                            <option value="7">Gen 7</option>
-                            <option value="8">Gen 8</option>
-                            <option value="9">Gen 9</option>
+                            <option value="1">Gen 1</option><option value="2">Gen 2</option><option value="3">Gen 3</option><option value="4">Gen 4</option><option value="5">Gen 5</option><option value="6">Gen 6</option><option value="7">Gen 7</option><option value="8">Gen 8</option><option value="9">Gen 9</option>
                         </select>
-                        <div class="flex items-center gap-1">
-                            <button onclick="applyClassicFilter('gen', 'eliminate')" title="Descartar esta generación" class="bg-red-900/80 hover:bg-red-700 text-white w-6 h-6 rounded flex items-center justify-center text-xs font-bold">✕</button>
-                            <button onclick="applyClassicFilter('gen', 'keep')" title="Quedarse solo con esta generación" class="bg-emerald-900/80 hover:bg-emerald-700 text-white w-6 h-6 rounded flex items-center justify-center text-xs font-bold">✓</button>
-                            <button onclick="applyClassicFilter('gen', 'eliminate-not')" title="Descartar NO esta generación" class="bg-purple-900/80 hover:bg-purple-700 text-white w-6 h-6 rounded flex items-center justify-center text-xs font-bold">?</button>
-                        </div>
+                        <button onclick="eliminateByGen(true)" class="bg-red-900/60 hover:bg-red-800 text-red-200 px-2 py-1 rounded font-semibold">❌</button>
+                        <button onclick="eliminateByGen(false)" class="bg-emerald-900/60 hover:bg-emerald-800 text-emerald-200 px-2 py-1 rounded font-semibold">✅</button>
+                        <button onclick="undoFilter('gen')" class="bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded font-bold">✖</button>
+                    </div>
+
+                    <div id="container-filter-weight" class="flex items-center gap-1 bg-slate-900 p-2 rounded-lg border border-slate-700 transition-colors">
+                        <select id="filter-weight-op" class="bg-slate-800 border border-slate-700 px-2 py-1 rounded text-white">
+                            <option value="greater">Pesa > </option>
+                            <option value="less">Pesa < </option>
+                        </select>
+                        <input type="number" id="filter-weight-val" placeholder="kg" class="bg-slate-800 border border-slate-700 px-2 py-1 rounded text-white w-16 text-center">
+                        <button onclick="eliminateByWeight()" class="bg-slate-700 hover:bg-slate-600 px-2 py-1 rounded font-semibold">Aplicar</button>
+                        <button onclick="undoFilter('weight')" class="bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded font-bold">✖</button>
+                    </div>
+
+                    <div id="container-filter-height" class="flex items-center gap-1 bg-slate-900 p-2 rounded-lg border border-slate-700 transition-colors">
+                        <select id="filter-height-op" class="bg-slate-800 border border-slate-700 px-2 py-1 rounded text-white">
+                            <option value="greater">Mide > </option>
+                            <option value="less">Mide < </option>
+                        </select>
+                        <input type="number" step="0.1" id="filter-height-val" placeholder="m" class="bg-slate-800 border border-slate-700 px-2 py-1 rounded text-white w-16 text-center">
+                        <button onclick="eliminateByHeight()" class="bg-slate-700 hover:bg-slate-600 px-2 py-1 rounded font-semibold">Aplicar</button>
+                        <button onclick="undoFilter('height')" class="bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded font-bold">✖</button>
                     </div>
                 </div>
             </div>
 
-            <!-- Grilla del Tablero Clásico (Clic manual para tachar/destachar cartas) -->
             <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 shadow-2xl">
                 <div class="mb-3 flex justify-between items-center px-2">
-                    <span class="text-xs font-bold text-slate-400 uppercase">Haz clic en un Pokémon para descartarlo manualmente (<span id="classic-remaining-count">0</span> restantes)</span>
-                    <input type="text" id="search-classic-board" placeholder="🔍 Filtrar candidatos..." oninput="filterClassicBoard()" class="px-3 py-1 bg-slate-900 border border-slate-700 rounded-lg text-white text-xs focus:outline-none focus:border-red-500 w-48">
+                    <span class="text-xs font-bold text-slate-400 uppercase">Tablero de Descarte (<span id="remaining-count">0</span> restantes)</span>
+                    <input type="text" id="search-board-pokemon" placeholder="🔍 Filtrar nombre..." oninput="filterBoard()" class="px-3 py-1 bg-slate-900 border border-slate-700 rounded-lg text-white text-xs focus:outline-none focus:border-red-500 w-48">
                 </div>
-                <div id="classic-game-board-grid" class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2 max-h-96 overflow-y-auto p-1"></div>
+                <div id="game-board-grid" class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 max-h-[52vh] overflow-y-auto p-1"></div>
             </div>
         </div>
 
-        <!-- VISTA 4B: TABLERO DE JUEGO MODO TABLA -->
+        <!-- VISTA 4B: TABLERO DE JUEGO MODO TABLA (NUEVO) -->
         <div id="view-game-table-mode" class="w-full max-w-6xl space-y-4 hidden">
-            <!-- Panel Superior con Secreto y Notificación de Turno -->
+            <!-- Panel Superior con Secreto y Botón de Arriesgar -->
             <div class="bg-slate-800 border border-slate-700 rounded-xl p-4 flex flex-wrap justify-between items-center gap-4 shadow-lg">
                 <div class="flex items-center gap-3">
                     <span class="text-xs text-slate-400 uppercase font-bold">Tu Secreto:</span>
                     <div id="my-secret-preview-table" class="flex items-center gap-3 bg-slate-900 px-3 py-2 rounded-lg border border-slate-700"></div>
                 </div>
 
-                <!-- Indicador Dinámico de Turno -->
-                <div id="turn-indicator" class="px-4 py-2 bg-slate-900 border border-amber-500 text-amber-400 font-bold text-xs rounded-xl shadow animate-pulse">
-                    ⏳ Esperando turno...
-                </div>
-            </div>
-
-            <!-- TABLERO DE DESCARTE RÁPIDO POR ATRIBUTOS (MODO TABLA) -->
-            <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 shadow-xl space-y-3">
-                <div class="text-xs font-bold text-slate-300 uppercase flex justify-between items-center">
-                    <span>⚡ Descarte Rápido por Atributos:</span>
-                    <button onclick="resetQuickFilters()" class="text-[10px] text-red-400 hover:underline">Limpiar Filtros</button>
-                </div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                    <!-- Filtro por Tipo -->
-                    <div class="bg-slate-900 p-2.5 rounded-xl border border-slate-700 flex items-center justify-between gap-2">
-                        <select id="qf-type" class="bg-slate-950 border border-slate-700 text-xs text-white rounded px-2 py-1.5 w-full focus:outline-none focus:border-red-500">
-                            <option value="">Tipo...</option>
-                            <option value="normal">Normal</option>
-                            <option value="fire">Fuego</option>
-                            <option value="water">Agua</option>
-                            <option value="grass">Planta</option>
-                            <option value="electric">Eléctrico</option>
-                            <option value="ice">Hielo</option>
-                            <option value="fighting">Lucha</option>
-                            <option value="poison">Veneno</option>
-                            <option value="ground">Tierra</option>
-                            <option value="flying">Volador</option>
-                            <option value="psychic">Psíquico</option>
-                            <option value="bug">Bicho</option>
-                            <option value="rock">Roca</option>
-                            <option value="ghost">Fantasma</option>
-                            <option value="dragon">Dragón</option>
-                            <option value="steel">Acero</option>
-                            <option value="fairy">Hada</option>
-                            <option value="dark">Siniestro</option>
-                        </select>
-                        <div class="flex items-center gap-1">
-                            <button onclick="applyQuickFilter('type', 'eliminate')" title="Descartar este tipo" class="bg-red-900/80 hover:bg-red-700 text-white w-6 h-6 rounded flex items-center justify-center text-xs font-bold">✕</button>
-                            <button onclick="applyQuickFilter('type', 'keep')" title="Quedarse solo con este tipo" class="bg-emerald-900/80 hover:bg-emerald-700 text-white w-6 h-6 rounded flex items-center justify-center text-xs font-bold">✓</button>
-                            <button onclick="applyQuickFilter('type', 'eliminate-not')" title="Descartar NO este tipo" class="bg-purple-900/80 hover:bg-purple-700 text-white w-6 h-6 rounded flex items-center justify-center text-xs font-bold">?</button>
-                        </div>
-                    </div>
-
-                    <!-- Filtro por Color -->
-                    <div class="bg-slate-900 p-2.5 rounded-xl border border-slate-700 flex items-center justify-between gap-2">
-                        <select id="qf-color" class="bg-slate-950 border border-slate-700 text-xs text-white rounded px-2 py-1.5 w-full focus:outline-none focus:border-red-500">
-                            <option value="">Color...</option>
-                            <option value="black">Negro</option>
-                            <option value="blue">Azul</option>
-                            <option value="brown">Marrón</option>
-                            <option value="gray">Gris</option>
-                            <option value="green">Verde</option>
-                            <option value="pink">Rosa</option>
-                            <option value="purple">Morado</option>
-                            <option value="red">Rojo</option>
-                            <option value="white">Blanco</option>
-                            <option value="yellow">Amarillo</option>
-                        </select>
-                        <div class="flex items-center gap-1">
-                            <button onclick="applyQuickFilter('color', 'eliminate')" title="Descartar este color" class="bg-red-900/80 hover:bg-red-700 text-white w-6 h-6 rounded flex items-center justify-center text-xs font-bold">✕</button>
-                            <button onclick="applyQuickFilter('color', 'keep')" title="Quedarse solo con este color" class="bg-emerald-900/80 hover:bg-emerald-700 text-white w-6 h-6 rounded flex items-center justify-center text-xs font-bold">✓</button>
-                            <button onclick="applyQuickFilter('color', 'eliminate-not')" title="Descartar NO este color" class="bg-purple-900/80 hover:bg-purple-700 text-white w-6 h-6 rounded flex items-center justify-center text-xs font-bold">?</button>
-                        </div>
-                    </div>
-
-                    <!-- Filtro por Fase Evolutiva -->
-                    <div class="bg-slate-900 p-2.5 rounded-xl border border-slate-700 flex items-center justify-between gap-2">
-                        <select id="qf-stage" class="bg-slate-950 border border-slate-700 text-xs text-white rounded px-2 py-1.5 w-full focus:outline-none focus:border-red-500">
-                            <option value="">Fase Evolutiva...</option>
-                            <option value="Única">Única</option>
-                            <option value="Fase 1 (Base)">Fase 1 (Base)</option>
-                            <option value="Fase 2">Fase 2</option>
-                            <option value="Fase 3">Fase 3</option>
-                        </select>
-                        <div class="flex items-center gap-1">
-                            <button onclick="applyQuickFilter('stage', 'eliminate')" title="Descartar esta fase" class="bg-red-900/80 hover:bg-red-700 text-white w-6 h-6 rounded flex items-center justify-center text-xs font-bold">✕</button>
-                            <button onclick="applyQuickFilter('stage', 'keep')" title="Quedarse solo con esta fase" class="bg-emerald-900/80 hover:bg-emerald-700 text-white w-6 h-6 rounded flex items-center justify-center text-xs font-bold">✓</button>
-                            <button onclick="applyQuickFilter('stage', 'eliminate-not')" title="Descartar NO esta fase" class="bg-purple-900/80 hover:bg-purple-700 text-white w-6 h-6 rounded flex items-center justify-center text-xs font-bold">?</button>
-                        </div>
-                    </div>
-
-                    <!-- Filtro por Generación -->
-                    <div class="bg-slate-900 p-2.5 rounded-xl border border-slate-700 flex items-center justify-between gap-2">
-                        <select id="qf-gen" class="bg-slate-950 border border-slate-700 text-xs text-white rounded px-2 py-1.5 w-full focus:outline-none focus:border-red-500">
-                            <option value="">Generación...</option>
-                            <option value="1">Gen 1</option>
-                            <option value="2">Gen 2</option>
-                            <option value="3">Gen 3</option>
-                            <option value="4">Gen 4</option>
-                            <option value="5">Gen 5</option>
-                            <option value="6">Gen 6</option>
-                            <option value="7">Gen 7</option>
-                            <option value="8">Gen 8</option>
-                            <option value="9">Gen 9</option>
-                        </select>
-                        <div class="flex items-center gap-1">
-                            <button onclick="applyQuickFilter('gen', 'eliminate')" title="Descartar esta generación" class="bg-red-900/80 hover:bg-red-700 text-white w-6 h-6 rounded flex items-center justify-center text-xs font-bold">✕</button>
-                            <button onclick="applyQuickFilter('gen', 'keep')" title="Quedarse solo con esta generación" class="bg-emerald-900/80 hover:bg-emerald-700 text-white w-6 h-6 rounded flex items-center justify-center text-xs font-bold">✓</button>
-                            <button onclick="applyQuickFilter('gen', 'eliminate-not')" title="Descartar NO esta generación" class="bg-purple-900/80 hover:bg-purple-700 text-white w-6 h-6 rounded flex items-center justify-center text-xs font-bold">?</button>
-                        </div>
-                    </div>
-
-                    <!-- Filtro por Peso -->
-                    <div class="bg-slate-900 p-2.5 rounded-xl border border-slate-700 flex items-center justify-between gap-2">
-                        <select id="qf-weight-op" class="bg-slate-950 border border-slate-700 text-xs text-white rounded px-1.5 py-1.5 focus:outline-none focus:border-red-500">
-                            <option value=">">Pesa ></option>
-                            <option value="<">Pesa <</option>
-                            <option value="=">Pesa =</option>
-                        </select>
-                        <input type="number" id="qf-weight-val" placeholder="kg" step="0.1" class="bg-slate-950 border border-slate-700 text-xs text-white rounded px-2 py-1.5 w-16 text-center focus:outline-none focus:border-red-500">
-                        <button onclick="applyNumericFilter('weight')" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-2.5 py-1.5 rounded">Aplicar</button>
-                        <button onclick="clearNumericFilter('weight')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 w-6 h-6 rounded flex items-center justify-center text-xs font-bold">✕</button>
-                    </div>
-
-                    <!-- Filtro por Altura -->
-                    <div class="bg-slate-900 p-2.5 rounded-xl border border-slate-700 flex items-center justify-between gap-2">
-                        <select id="qf-height-op" class="bg-slate-950 border border-slate-700 text-xs text-white rounded px-1.5 py-1.5 focus:outline-none focus:border-red-500">
-                            <option value=">">Mide ></option>
-                            <option value="<">Mide <</option>
-                            <option value="=">Mide =</option>
-                        </select>
-                        <input type="number" id="qf-height-val" placeholder="m" step="0.1" class="bg-slate-950 border border-slate-700 text-xs text-white rounded px-2 py-1.5 w-16 text-center focus:outline-none focus:border-red-500">
-                        <button onclick="applyNumericFilter('height')" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-2.5 py-1.5 rounded">Aplicar</button>
-                        <button onclick="clearNumericFilter('height')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 w-6 h-6 rounded flex items-center justify-center text-xs font-bold">✕</button>
-                    </div>
+                <div class="flex flex-wrap gap-2">
+                    <button onclick="openTableGuessModal()" class="bg-amber-600 hover:bg-amber-500 text-xs font-bold px-4 py-2.5 rounded-lg shadow transition flex items-center gap-2">
+                        🎯 Arriesgar Pokémon
+                    </button>
                 </div>
             </div>
 
@@ -415,21 +269,20 @@
                 <!-- Tu Tabla de Intentos -->
                 <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 shadow-xl space-y-3">
                     <h3 class="text-xs font-bold text-amber-400 uppercase">📊 Tus Intentos Realizados</h3>
-                    <div class="overflow-x-auto max-h-72">
+                    <div class="overflow-x-auto max-h-80">
                         <table class="w-full text-left text-xs">
                             <thead class="bg-slate-900 text-slate-400 sticky top-0">
                                 <tr>
                                     <th class="p-2">Pokémon</th>
                                     <th class="p-2">Tipo</th>
                                     <th class="p-2">Gen</th>
-                                    <th class="p-2">Color</th>
                                     <th class="p-2">Peso</th>
                                     <th class="p-2">Altura</th>
                                     <th class="p-2">Fase</th>
                                 </tr>
                             </thead>
                             <tbody id="my-table-attempts-body" class="divide-y divide-slate-700/50">
-                                <tr><td colspan="7" class="text-center text-slate-500 py-4">Aún no has hecho ningún intento.</td></tr>
+                                <tr><td colspan="6" class="text-center text-slate-500 py-4">Aún no has hecho ningún intento.</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -438,38 +291,61 @@
                 <!-- Tabla de Intentos del Oponente -->
                 <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 shadow-xl space-y-3">
                     <h3 class="text-xs font-bold text-red-400 uppercase">👥 Intentos del Oponente</h3>
-                    <div class="overflow-x-auto max-h-72">
+                    <div class="overflow-x-auto max-h-80">
                         <table class="w-full text-left text-xs">
                             <thead class="bg-slate-900 text-slate-400 sticky top-0">
                                 <tr>
                                     <th class="p-2">Pokémon</th>
                                     <th class="p-2">Tipo</th>
                                     <th class="p-2">Gen</th>
-                                    <th class="p-2">Color</th>
                                     <th class="p-2">Peso</th>
                                     <th class="p-2">Altura</th>
                                     <th class="p-2">Fase</th>
                                 </tr>
                             </thead>
                             <tbody id="opponent-table-attempts-body" class="divide-y divide-slate-700/50">
-                                <tr><td colspan="7" class="text-center text-slate-500 py-4">El oponente aún no ha arriesgado.</td></tr>
+                                <tr><td colspan="6" class="text-center text-slate-500 py-4">El oponente aún no ha arriesgado.</td></tr>
                             </tbody>
                         </table>
                     </div>
                 </div>
             </div>
 
-            <!-- Grilla Interactiva (Tocar un Pokémon aquí arriesga directamente si es tu turno) -->
+            <!-- Grilla Oculta / Automática para el Modo Tabla (Muestra los Pokémon disponibles tras los filtros automáticos) -->
             <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 shadow-2xl">
                 <div class="mb-3 flex justify-between items-center px-2">
-                    <span class="text-xs font-bold text-slate-400 uppercase">Haz clic en un Pokémon para arriesgar (<span id="table-remaining-count">0</span> disponibles)</span>
+                    <span class="text-xs font-bold text-slate-400 uppercase">Candidatos Disponibles (Filtrados Automáticamente: <span id="table-remaining-count">0</span>)</span>
                     <input type="text" id="search-table-board" placeholder="🔍 Filtrar candidatos..." oninput="filterTableBoard()" class="px-3 py-1 bg-slate-900 border border-slate-700 rounded-lg text-white text-xs focus:outline-none focus:border-red-500 w-48">
                 </div>
-                <div id="table-game-board-grid" class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2 max-h-56 overflow-y-auto p-1"></div>
+                <div id="table-game-board-grid" class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2 max-h-48 overflow-y-auto p-1"></div>
             </div>
         </div>
 
     </main>
+
+    <!-- MODAL DE ARRIESGAR (MODO CLÁSICO) -->
+    <div id="modal-guess" class="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
+            <h3 class="text-lg font-bold text-amber-400 text-center">🎯 ¿Quién crees que es el Pokémon del rival?</h3>
+            <input type="text" id="search-guess-modal" placeholder="🔍 Buscar..." oninput="filterGuessModal()" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:border-amber-500">
+            <div id="guess-modal-grid" class="grid grid-cols-3 gap-2 max-h-60 overflow-y-auto p-1 bg-slate-900 rounded-xl border border-slate-700"></div>
+            <div class="flex justify-end pt-2">
+                <button onclick="closeGuessModal()" class="bg-slate-700 hover:bg-slate-600 text-xs font-bold px-4 py-2 rounded-lg">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE ARRIESGAR (MODO TABLA) -->
+    <div id="modal-table-guess" class="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
+            <h3 class="text-lg font-bold text-amber-400 text-center">🎯 Elige un Pokémon para arriesgar</h3>
+            <input type="text" id="search-table-guess-modal" placeholder="🔍 Buscar entre candidatos disponibles..." oninput="filterTableGuessModal()" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:border-amber-500">
+            <div id="table-guess-modal-grid" class="grid grid-cols-3 gap-2 max-h-60 overflow-y-auto p-1 bg-slate-900 rounded-xl border border-slate-700"></div>
+            <div class="flex justify-end pt-2">
+                <button onclick="closeTableGuessModal()" class="bg-slate-700 hover:bg-slate-600 text-xs font-bold px-4 py-2 rounded-lg">Cancelar</button>
+            </div>
+        </div>
+    </div>
 
     <!-- MODAL DE VICTORIA -->
     <div id="modal-result" class="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50 hidden">
@@ -491,14 +367,13 @@
         let roomCode = "";
         let playersList = [];
         let mySecretPokemon = null;
-        let opponentSecretPokemon = null;
+        let opponentSecretPokemon = null; // En P2P se comparte o se valida
         let selectedGenerations = [1, 2, 3, 4, 5, 6, 7, 8, 9];
-        let gameMode = "table";
+        let gameMode = "classic"; // "classic" o "table"
 
-        // Control de Turnos
-        let isMyTurn = false;
-        let myPlayerIndex = 0;
-        let currentTurnIndex = 0;
+        let activeFilters = {
+            type: null, color: null, stage: null, gen: null, weight: null, height: null
+        };
 
         const typeTranslations = {
             normal: 'Normal', fire: 'Fuego', water: 'Agua', grass: 'Planta',
@@ -552,7 +427,7 @@
         }
 
         function showView(viewId) {
-            ['view-lobby', 'view-waiting-room', 'view-select-secret', 'view-game-classic-mode', 'view-game-table-mode'].forEach(id => {
+            ['view-lobby', 'view-waiting-room', 'view-select-secret', 'view-game-board', 'view-game-table-mode'].forEach(id => {
                 document.getElementById(id).classList.add('hidden');
             });
             document.getElementById(viewId).classList.remove('hidden');
@@ -579,8 +454,7 @@
 
             peer.on('open', (id) => {
                 document.getElementById('display-room-code').innerText = roomCode;
-                const modeText = gameMode === 'classic' ? 'Modo Clásico' : 'Modo Tabla';
-                document.getElementById('display-selected-mode').innerText = `Modalidad: ${modeText}`;
+                document.getElementById('display-selected-mode').innerText = `Modalidad: ${gameMode === 'classic' ? 'Clásica' : 'Modo Tabla'}`;
                 playersList = [{ id: peer.id, name: myUsername, host: true }];
                 updatePlayersUI();
                 showView('view-waiting-room');
@@ -631,28 +505,19 @@
             } else if (data.type === 'UPDATE_PLAYERS') {
                 playersList = data.players;
                 selectedGenerations = data.gens;
-                gameMode = data.mode || gameMode;
+                gameMode = data.mode || 'classic';
                 updatePlayersUI();
-                const modeText = gameMode === 'classic' ? 'Modo Clásico' : 'Modo Tabla';
-                document.getElementById('display-selected-mode').innerText = `Modalidad: ${modeText}`;
-            } else if (data.type === 'START_GAME_STATE') {
-                selectedGenerations = data.gens;
-                playersList = data.players;
+                document.getElementById('display-selected-mode').innerText = `Modalidad: ${gameMode === 'classic' ? 'Clásica' : 'Modo Tabla'}`;
+            } else if (data.type === 'START_SELECTION') {
                 gameMode = data.mode || gameMode;
-                currentTurnIndex = data.turnIndex;
-                
-                initGame();
-            } else if (data.type === 'SHARE_SECRET') {
-                opponentSecretPokemon = data.secret;
+                initGamePool();
+                buildSecretSelectionGrid();
+                showView('view-select-secret');
             } else if (data.type === 'PLAYER_WON') {
                 triggerGameOver(data.winnerName, data.pokemonName);
             } else if (data.type === 'TABLE_GUESS') {
-                addAttemptToTable('opponent', data.guessPokemon, mySecretPokemon);
-                currentTurnIndex = data.nextTurnIndex;
-                updateTurnState();
-            } else if (data.type === 'FINISH_CLASSIC_TURN') {
-                currentTurnIndex = data.nextTurnIndex;
-                updateTurnState();
+                // Recibimos el intento del oponente en Modo Tabla
+                handleOpponentTableGuess(data.guessPokemon);
             }
         }
 
@@ -676,34 +541,10 @@
         }
 
         function startPokemonSelection() {
-            currentTurnIndex = Math.floor(Math.random() * playersList.length);
-            
-            const startPayload = { 
-                type: 'START_GAME_STATE', 
-                gens: selectedGenerations, 
-                players: playersList, 
-                turnIndex: currentTurnIndex, 
-                mode: gameMode 
-            };
-
-            initGame();
-            broadcast(startPayload);
-        }
-
-        function initGame() {
+            broadcast({ type: 'START_SELECTION', gens: selectedGenerations, mode: gameMode });
             initGamePool();
-            const myId = peer.id;
-            const foundIdx = playersList.findIndex(p => p.id === myId);
-            myPlayerIndex = foundIdx !== -1 ? foundIdx : 0;
-
-            if (gameMode === 'classic') {
-                buildClassicGameBoard();
-                showView('view-game-classic-mode');
-                updateTurnState();
-            } else {
-                buildSecretSelectionGrid();
-                showView('view-select-secret');
-            }
+            buildSecretSelectionGrid();
+            showView('view-select-secret');
         }
 
         function initGamePool() {
@@ -753,108 +594,6 @@
             return 'Única';
         }
 
-        // --- MODO CLÁSICO ---
-        async function buildClassicGameBoard(filter = "") {
-            const grid = document.getElementById('classic-game-board-grid');
-            grid.innerHTML = '<div class="col-span-full text-center text-xs text-slate-400 py-4">Cargando tablero...</div>';
-
-            const filtered = activePokemonPool.filter(p => p.name.includes(filter.toLowerCase()));
-            grid.innerHTML = '';
-
-            for (let p of filtered) {
-                await enrichPokemonData(p);
-                const card = document.createElement('div');
-                card.className = "pokemon-card bg-slate-900 border border-slate-700 rounded-xl p-2 flex flex-col items-center justify-between text-xs h-28 cursor-pointer hover:border-red-500 transition";
-                
-                card.dataset.id = p.id;
-                card.dataset.color = p.color;
-                card.dataset.stage = p.stage;
-                card.dataset.gen = p.gen;
-                card.dataset.types = JSON.stringify(p.types);
-
-                card.innerHTML = `
-                    <span class="text-[9px] text-slate-400 font-mono">#${String(p.id).padStart(3, '0')}</span>
-                    <img src="${p.sprite}" class="w-14 h-14 object-contain pointer-events-none">
-                    <span class="font-bold text-[10px] truncate pointer-events-none">${p.displayName}</span>
-                `;
-
-                // Clic manual en modo clásico para tachar o destachar cartas
-                card.onclick = () => {
-                    card.classList.toggle('opacity-30');
-                    card.classList.toggle('bg-red-950/40');
-                    card.classList.toggle('border-red-800');
-                    card.classList.toggle('line-through');
-                };
-
-                grid.appendChild(card);
-            }
-            updateClassicRemainingCount();
-        }
-
-        function filterClassicBoard() {
-            buildClassicGameBoard(document.getElementById('search-classic-board').value);
-        }
-
-        function updateClassicRemainingCount() {
-            const total = document.querySelectorAll('.pokemon-card').length;
-            const eliminated = document.querySelectorAll('.pokemon-card.opacity-30').length;
-            document.getElementById('classic-remaining-count').innerText = total - eliminated;
-        }
-
-        function applyClassicFilter(field, action) {
-            const val = document.getElementById(`qc-${field}`).value;
-            if (!val) {
-                alert("Selecciona un valor primero para filtrar.");
-                return;
-            }
-
-            document.querySelectorAll('.pokemon-card').forEach(card => {
-                let match = false;
-                if (field === 'type') {
-                    const types = JSON.parse(card.dataset.types || '[]');
-                    match = types.includes(val);
-                } else if (field === 'color') {
-                    match = card.dataset.color === val;
-                } else if (field === 'stage') {
-                    match = card.dataset.stage === val;
-                } else if (field === 'gen') {
-                    match = parseInt(card.dataset.gen) === parseInt(val);
-                }
-
-                if (action === 'eliminate' && match) {
-                    card.classList.add('opacity-30', 'bg-red-950/40', 'border-red-800');
-                } else if (action === 'keep' && !match) {
-                    card.classList.add('opacity-30', 'bg-red-950/40', 'border-red-800');
-                } else if (action === 'eliminate-not' && !match) {
-                    card.classList.add('opacity-30', 'bg-red-950/40', 'border-red-800');
-                }
-            });
-            updateClassicRemainingCount();
-        }
-
-        function resetClassicFilters() {
-            document.querySelectorAll('.pokemon-card').forEach(card => {
-                card.classList.remove('opacity-30', 'bg-red-950/40', 'border-red-800');
-            });
-            ['type', 'color', 'stage', 'gen'].forEach(f => {
-                document.getElementById(`qc-${f}`).value = '';
-            });
-            updateClassicRemainingCount();
-        }
-
-        function finishClassicTurn() {
-            const nextTurn = (currentTurnIndex + 1) % playersList.length;
-            const payload = { type: 'FINISH_CLASSIC_TURN', nextTurnIndex: nextTurn };
-            
-            if (isHost) broadcast(payload);
-            else if (conn && conn.open) conn.send(payload);
-
-            currentTurnIndex = nextTurn;
-            updateTurnState();
-        }
-
-
-        // --- MODO TABLA ---
         async function buildSecretSelectionGrid(filter = "") {
             const grid = document.getElementById('secret-grid');
             grid.innerHTML = '<div class="col-span-full text-center text-xs text-slate-400 py-4">Cargando Pokémon...</div>';
@@ -886,59 +625,227 @@
             await enrichPokemonData(pokemon);
             mySecretPokemon = pokemon;
             
-            const secretPayload = { type: 'SHARE_SECRET', secret: pokemon };
-            if (isHost) {
-                broadcast(secretPayload);
-            } else if (conn && conn.open) {
-                conn.send(secretPayload);
-            }
-
             const translatedTypes = pokemon.types.map(t => typeTranslations[t] || t).join(' / ');
             const colorEsp = colorTranslations[pokemon.color] || pokemon.color;
 
-            document.getElementById('my-secret-preview-table').innerHTML = `
-                <img src="${pokemon.sprite}" class="w-12 h-12 object-contain">
-                <div class="flex flex-col text-xs leading-tight">
-                    <span class="font-bold text-white text-sm">${pokemon.displayName} <span class="text-slate-400 font-mono text-xs">#${String(pokemon.id).padStart(3, '0')}</span></span>
-                    <span class="text-red-400 font-semibold mt-0.5">Tipos: ${translatedTypes}</span>
-                    <span class="text-slate-300 text-[10px] mt-0.5">Gen ${pokemon.gen} | 🎨 ${colorEsp} | ${pokemon.stage} | ⚖️ ${pokemon.weight}kg | 📏 ${pokemon.height}m</span>
-                </div>
-            `;
-
-            buildTableGameBoard();
-            showView('view-game-table-mode');
-            updateTurnState();
-        }
-
-        function updateTurnState() {
-            isMyTurn = (currentTurnIndex === myPlayerIndex);
-            
             if (gameMode === 'classic') {
-                const indicator = document.getElementById('turn-indicator-classic');
-                const btnFinish = document.getElementById('btn-finish-turn');
-                if (isMyTurn) {
-                    indicator.innerText = "⭐ ¡Es tu turno de preguntar!";
-                    indicator.className = "px-4 py-2 bg-emerald-950 border border-emerald-500 text-emerald-400 font-bold text-xs rounded-xl shadow";
-                    btnFinish.classList.remove('hidden');
-                } else {
-                    const currentName = playersList[currentTurnIndex]?.name || "Oponente";
-                    indicator.innerText = `⏳ Turno de ${currentName}...`;
-                    indicator.className = "px-4 py-2 bg-slate-900 border border-amber-500 text-amber-400 font-bold text-xs rounded-xl shadow animate-pulse";
-                    btnFinish.classList.add('hidden');
-                }
+                document.getElementById('my-secret-preview').innerHTML = `
+                    <img src="${pokemon.sprite}" class="w-12 h-12 object-contain">
+                    <div class="flex flex-col text-xs leading-tight">
+                        <span class="font-bold text-white text-sm">${pokemon.displayName} <span class="text-slate-400 font-mono text-xs">#${String(pokemon.id).padStart(3, '0')}</span></span>
+                        <span class="text-red-400 font-semibold mt-0.5">Tipos: ${translatedTypes}</span>
+                        <span class="text-slate-300 text-[10px] mt-0.5">Gen ${pokemon.gen} | 🎨 ${colorEsp} | ${pokemon.stage} | ⚖️ ${pokemon.weight}kg | 📏 ${pokemon.height}m</span>
+                    </div>
+                `;
+                buildGameBoard();
+                showView('view-game-board');
             } else {
-                const indicator = document.getElementById('turn-indicator');
-                if (isMyTurn) {
-                    indicator.innerText = "⭐ ¡Es tu turno para arriesgar!";
-                    indicator.className = "px-4 py-2 bg-emerald-950 border border-emerald-500 text-emerald-400 font-bold text-xs rounded-xl shadow";
-                } else {
-                    const currentName = playersList[currentTurnIndex]?.name || "Oponente";
-                    indicator.innerText = `⏳ Turno de ${currentName}...`;
-                    indicator.className = "px-4 py-2 bg-slate-900 border border-amber-500 text-amber-400 font-bold text-xs rounded-xl shadow animate-pulse";
-                }
+                document.getElementById('my-secret-preview-table').innerHTML = `
+                    <img src="${pokemon.sprite}" class="w-12 h-12 object-contain">
+                    <div class="flex flex-col text-xs leading-tight">
+                        <span class="font-bold text-white text-sm">${pokemon.displayName} <span class="text-slate-400 font-mono text-xs">#${String(pokemon.id).padStart(3, '0')}</span></span>
+                        <span class="text-red-400 font-semibold mt-0.5">Tipos: ${translatedTypes}</span>
+                        <span class="text-slate-300 text-[10px] mt-0.5">Gen ${pokemon.gen} | 🎨 ${colorEsp} | ${pokemon.stage} | ⚖️ ${pokemon.weight}kg | 📏 ${pokemon.height}m</span>
+                    </div>
+                `;
+                buildTableGameBoard();
+                showView('view-game-table-mode');
             }
         }
 
+        // --- MODO CLÁSICO ---
+        async function buildGameBoard(filter = "") {
+            const grid = document.getElementById('game-board-grid');
+            grid.innerHTML = '<div class="col-span-full text-center text-xs text-slate-400 py-6">Generando tablero optimizado...</div>';
+
+            const filtered = activePokemonPool.filter(p => p.name.includes(filter.toLowerCase()));
+            grid.innerHTML = '';
+
+            for (let p of filtered) {
+                await enrichPokemonData(p);
+                const card = document.createElement('div');
+                card.className = "pokemon-card bg-slate-900 border border-slate-700 rounded-xl p-1.5 flex flex-col items-center justify-between cursor-pointer relative select-none text-xs h-48";
+                card.id = `board-card-${p.id}`;
+                card.dataset.id = p.id;
+                card.dataset.types = JSON.stringify(p.types);
+                card.dataset.weight = p.weight;
+                card.dataset.height = p.height;
+                card.dataset.stage = p.stage;
+                card.dataset.gen = p.gen;
+                card.dataset.color = p.color;
+                
+                const colorEsp = colorTranslations[p.color] || p.color;
+                const translatedTypes = p.types.map(t => typeTranslations[t] || t).join(' / ');
+
+                card.innerHTML = `
+                    <div class="w-full flex justify-between text-[9px] text-slate-400 px-1 font-mono">
+                        <span>#${String(p.id).padStart(3, '0')}</span>
+                        <span>Gen ${p.gen}</span>
+                    </div>
+                    <img src="${p.sprite}" class="w-36 h-36 pointer-events-none object-contain py-0.5">
+                    <div class="w-full text-center">
+                        <span class="font-bold truncate block pointer-events-none text-[11px] leading-tight">${p.displayName}</span>
+                        <div class="text-[9px] text-slate-400 pointer-events-none leading-tight mt-0.5">
+                            <span class="text-red-400 font-bold uppercase">${translatedTypes}</span> | 🎨 ${colorEsp}<br>
+                            <span>${p.stage}</span> | ⚖️ ${p.weight}kg | 📏 ${p.height}m
+                        </div>
+                    </div>
+                `;
+                card.onclick = () => {
+                    card.classList.add('eliminated');
+                    updateRemainingCount();
+                };
+                grid.appendChild(card);
+            }
+            reapplyAllFilters();
+            updateRemainingCount();
+        }
+
+        function filterBoard() {
+            buildGameBoard(document.getElementById('search-board-pokemon').value);
+        }
+
+        function resetBoard() {
+            activeFilters = { type: null, color: null, stage: null, gen: null, weight: null, height: null };
+            document.querySelectorAll('.pokemon-card').forEach(c => c.classList.remove('eliminated'));
+            updateRemainingCount();
+        }
+
+        function updateRemainingCount() {
+            const total = document.querySelectorAll('.pokemon-card').length;
+            const eliminated = document.querySelectorAll('.pokemon-card.eliminated').length;
+            document.getElementById('remaining-count').innerText = total - eliminated;
+        }
+
+        function reapplyAllFilters() {
+            document.querySelectorAll('.pokemon-card').forEach(card => {
+                let shouldEliminate = false;
+                if (activeFilters.type) {
+                    const types = JSON.parse(card.dataset.types || '[]');
+                    const has = types.includes(activeFilters.type.val);
+                    if (activeFilters.type.isTarget ? has : !has) shouldEliminate = true;
+                }
+                if (activeFilters.color && !shouldEliminate) {
+                    const color = card.dataset.color;
+                    const matches = (color === activeFilters.color.val);
+                    if (activeFilters.color.isTarget ? matches : !matches) shouldEliminate = true;
+                }
+                if (activeFilters.stage && !shouldEliminate) {
+                    const stage = card.dataset.stage;
+                    const matches = (stage === activeFilters.stage.val);
+                    if (activeFilters.stage.isTarget ? matches : !matches) shouldEliminate = true;
+                }
+                if (activeFilters.gen && !shouldEliminate) {
+                    const gen = parseInt(card.dataset.gen);
+                    const matches = (gen === parseInt(activeFilters.gen.val));
+                    if (activeFilters.gen.isTarget ? matches : !matches) shouldEliminate = true;
+                }
+                if (activeFilters.weight && !shouldEliminate) {
+                    const w = parseFloat(card.dataset.weight);
+                    const cond = (activeFilters.weight.op === 'greater') ? (w <= activeFilters.weight.val) : (w >= activeFilters.weight.val);
+                    if (cond) shouldEliminate = true;
+                }
+                if (activeFilters.height && !shouldEliminate) {
+                    const h = parseFloat(card.dataset.height);
+                    const cond = (activeFilters.height.op === 'greater') ? (h <= activeFilters.height.val) : (h >= activeFilters.height.val);
+                    if (cond) shouldEliminate = true;
+                }
+                if (shouldEliminate) card.classList.add('eliminated');
+            });
+            updateRemainingCount();
+        }
+
+        function eliminateByType(isTargetType) {
+            const val = document.getElementById('filter-type').value;
+            if(!val) { alert("Selecciona un tipo."); return; }
+            activeFilters.type = { val, isTarget: isTargetType };
+            reapplyAllFilters();
+        }
+
+        function eliminateByColor(isTargetColor) {
+            const val = document.getElementById('filter-color').value;
+            if(!val) { alert("Selecciona un color."); return; }
+            activeFilters.color = { val, isTarget: isTargetColor };
+            reapplyAllFilters();
+        }
+
+        function eliminateByStage(isTargetStage) {
+            const val = document.getElementById('filter-stage').value;
+            if(!val) { alert("Selecciona una fase evolutiva."); return; }
+            activeFilters.stage = { val, isTarget: isTargetStage };
+            reapplyAllFilters();
+        }
+
+        function eliminateByGen(isTargetGen) {
+            const val = document.getElementById('filter-gen').value;
+            if(!val) { alert("Selecciona una generación."); return; }
+            activeFilters.gen = { val, isTarget: isTargetGen };
+            reapplyAllFilters();
+        }
+
+        function eliminateByWeight() {
+            const op = document.getElementById('filter-weight-op').value;
+            const val = parseFloat(document.getElementById('filter-weight-val').value);
+            if(isNaN(val)) { alert("Ingresa un valor de peso."); return; }
+            activeFilters.weight = { op, val };
+            reapplyAllFilters();
+        }
+
+        function eliminateByHeight() {
+            const op = document.getElementById('filter-height-op').value;
+            const val = parseFloat(document.getElementById('filter-height-val').value);
+            if(isNaN(val)) { alert("Ingresa un valor de altura."); return; }
+            activeFilters.height = { op, val };
+            reapplyAllFilters();
+        }
+
+        function undoFilter(filterName) {
+            activeFilters[filterName] = null;
+            if(filterName === 'type') document.getElementById('filter-type').value = "";
+            if(filterName === 'color') document.getElementById('filter-color').value = "";
+            if(filterName === 'stage') document.getElementById('filter-stage').value = "";
+            if(filterName === 'gen') document.getElementById('filter-gen').value = "";
+            if(filterName === 'weight') document.getElementById('filter-weight-val').value = "";
+            if(filterName === 'height') document.getElementById('filter-height-val').value = "";
+
+            document.querySelectorAll('.pokemon-card').forEach(c => c.classList.remove('eliminated'));
+            reapplyAllFilters();
+        }
+
+        function openGuessModal() {
+            buildGuessModalGrid();
+            document.getElementById('modal-guess').classList.remove('hidden');
+        }
+
+        function closeGuessModal() {
+            document.getElementById('modal-guess').classList.add('hidden');
+        }
+
+        function buildGuessModalGrid(filter = "") {
+            const grid = document.getElementById('guess-modal-grid');
+            grid.innerHTML = '';
+            activePokemonPool.filter(p => p.name.includes(filter.toLowerCase())).forEach(p => {
+                const card = document.createElement('div');
+                card.className = "bg-slate-800 border border-slate-700 rounded-lg p-2 flex flex-col items-center cursor-pointer hover:border-amber-500 transition text-xs";
+                card.innerHTML = `<img src="${p.sprite}" class="w-12 h-12"><span class="font-bold mt-1 text-center">${p.displayName}</span>`;
+                card.onclick = () => submitGuess(p);
+                grid.appendChild(card);
+            });
+        }
+
+        function filterGuessModal() {
+            buildGuessModalGrid(document.getElementById('search-guess-modal').value);
+        }
+
+        function submitGuess(pokemon) {
+            closeGuessModal();
+            const payload = { type: 'PLAYER_WON', winnerName: myUsername, pokemonName: pokemon.displayName };
+            if(isHost) broadcast(payload);
+            else if(conn && conn.open) conn.send(payload);
+            triggerGameOver(myUsername, pokemon.displayName);
+        }
+
+        // --- MODO TABLA (NUEVA IMPLEMENTACIÓN) ---
         async function buildTableGameBoard(filter = "") {
             const grid = document.getElementById('table-game-board-grid');
             grid.innerHTML = '<div class="col-span-full text-center text-xs text-slate-400 py-4">Cargando candidatos...</div>';
@@ -949,30 +856,19 @@
             for (let p of filtered) {
                 await enrichPokemonData(p);
                 const card = document.createElement('div');
-                card.className = "pokemon-card-table bg-slate-900 border border-slate-700 rounded-xl p-1 flex flex-col items-center justify-between text-xs h-28 cursor-pointer hover:border-amber-500 transition";
-                
+                card.className = "pokemon-card-table bg-slate-900 border border-slate-700 rounded-xl p-1 flex flex-col items-center justify-between text-xs h-28";
                 card.dataset.id = p.id;
+                card.dataset.types = JSON.stringify(p.types);
                 card.dataset.weight = p.weight;
                 card.dataset.height = p.height;
-                card.dataset.gen = p.gen;
-                card.dataset.color = p.color;
                 card.dataset.stage = p.stage;
-                card.dataset.types = JSON.stringify(p.types);
+                card.dataset.gen = p.gen;
                 
                 card.innerHTML = `
                     <span class="text-[9px] text-slate-400 font-mono">#${String(p.id).padStart(3, '0')}</span>
-                    <img src="${p.sprite}" class="w-14 h-14 object-contain pointer-events-none">
-                    <span class="font-bold text-[10px] truncate pointer-events-none">${p.displayName}</span>
+                    <img src="${p.sprite}" class="w-14 h-14 object-contain">
+                    <span class="font-bold text-[10px] truncate">${p.displayName}</span>
                 `;
-                
-                card.onclick = () => {
-                    if (!isMyTurn) {
-                        alert("¡No es tu turno! Espera a que el oponente realice su jugada.");
-                        return;
-                    }
-                    if (card.classList.contains('eliminated')) return;
-                    submitTableGuess(p);
-                };
                 grid.appendChild(card);
             }
             updateTableRemainingCount();
@@ -988,128 +884,84 @@
             document.getElementById('table-remaining-count').innerText = total - eliminated;
         }
 
-        // Filtros rápidos específicos del Modo Tabla
-        function applyQuickFilter(field, action) {
-            const val = document.getElementById(`qf-${field}`).value;
-            if (!val) {
-                alert("Selecciona un valor primero para filtrar.");
-                return;
-            }
-
-            document.querySelectorAll('.pokemon-card-table').forEach(card => {
-                let match = false;
-                if (field === 'type') {
-                    const types = JSON.parse(card.dataset.types || '[]');
-                    match = types.includes(val);
-                } else if (field === 'color') {
-                    match = card.dataset.color === val;
-                } else if (field === 'stage') {
-                    match = card.dataset.stage === val;
-                } else if (field === 'gen') {
-                    match = parseInt(card.dataset.gen) === parseInt(val);
-                }
-
-                if (action === 'eliminate' && match) {
-                    card.classList.add('eliminated');
-                } else if (action === 'keep' && !match) {
-                    card.classList.add('eliminated');
-                } else if (action === 'eliminate-not' && !match) {
-                    card.classList.add('eliminated');
-                }
-            });
-            updateTableRemainingCount();
+        function openTableGuessModal() {
+            buildTableGuessModalGrid();
+            document.getElementById('modal-table-guess').classList.remove('hidden');
         }
 
-        function applyNumericFilter(field) {
-            const op = document.getElementById(`qf-${field}-op`).value;
-            const val = parseFloat(document.getElementById(`qf-${field}-val`).value);
-            if (isNaN(val)) {
-                alert("Ingresa un valor numérico válido.");
-                return;
-            }
+        function closeTableGuessModal() {
+            document.getElementById('modal-table-guess').classList.add('hidden');
+        }
 
-            document.querySelectorAll('.pokemon-card-table').forEach(card => {
-                const cardVal = parseFloat(card.dataset[field]);
-                let match = false;
-                if (op === '>') match = cardVal > val;
-                else if (op === '<') match = cardVal < val;
-                else if (op === '=') match = cardVal === val;
-
-                if (!match) {
-                    card.classList.add('eliminated');
+        function buildTableGuessModalGrid(filter = "") {
+            const grid = document.getElementById('table-guess-modal-grid');
+            grid.innerHTML = '';
+            // Solo mostramos los Pokémon que NO han sido eliminados por filtros automáticos previos
+            const candidates = Array.from(document.querySelectorAll('.pokemon-card-table:not(.eliminated)'));
+            
+            candidates.forEach(card => {
+                const id = parseInt(card.dataset.id);
+                const p = activePokemonPool.find(item => item.id === id);
+                if (p && p.name.includes(filter.toLowerCase())) {
+                    const el = document.createElement('div');
+                    el.className = "bg-slate-800 border border-slate-700 rounded-lg p-2 flex flex-col items-center cursor-pointer hover:border-amber-500 transition text-xs";
+                    el.innerHTML = `<img src="${p.sprite}" class="w-12 h-12"><span class="font-bold mt-1 text-center">${p.displayName}</span>`;
+                    el.onclick = () => submitTableGuess(p);
+                    grid.appendChild(el);
                 }
             });
-            updateTableRemainingCount();
         }
 
-        function clearNumericFilter(field) {
-            document.getElementById(`qf-${field}-val`).value = '';
-        }
-
-        function resetQuickFilters() {
-            document.querySelectorAll('.pokemon-card-table').forEach(card => {
-                card.classList.remove('eliminated');
-            });
-            ['type', 'color', 'stage', 'gen'].forEach(f => {
-                document.getElementById(`qf-${f}`).value = '';
-            });
-            ['weight', 'height'].forEach(f => {
-                document.getElementById(`qf-${f}-val`).value = '';
-            });
-            updateTableRemainingCount();
+        function filterTableGuessModal() {
+            buildTableGuessModalGrid(document.getElementById('search-table-guess-modal').value);
         }
 
         async function submitTableGuess(pokemon) {
+            closeTableGuessModal();
             await enrichPokemonData(pokemon);
 
-            if (!opponentSecretPokemon) {
-                alert("Esperando a que el oponente sincronice su secreto...");
-                return;
-            }
-            addAttemptToTable('my', pokemon, opponentSecretPokemon);
+            // Supongamos que simulamos o enviamos el intento. 
+            // Para testear en local o multijugador, comparamos contra un rival simulado o enviamos el intento por P2P.
+            // Aquí evaluamos el intento contra el Pokémon secreto o simulado.
+            // Notificamos al oponente o registramos en nuestra tabla:
+            addAttemptToTable('my', pokemon, mySecretPokemon);
 
-            const nextTurn = (currentTurnIndex + 1) % playersList.length;
-
-            const payload = { type: 'TABLE_GUESS', guessPokemon: pokemon, nextTurnIndex: nextTurn };
+            // Avisar al oponente vía P2P
+            const payload = { type: 'TABLE_GUESS', guessPokemon: pokemon };
             if(isHost) broadcast(payload);
             else if(conn && conn.open) conn.send(payload);
 
-            currentTurnIndex = nextTurn;
-            updateTurnState();
-
-            applyAutomaticFiltersFromGuess(pokemon, opponentSecretPokemon);
+            // Aplicar filtros automáticos basados en las pistas obtenidas
+            applyAutomaticFiltersFromGuess(pokemon, mySecretPokemon); // Nota: En juego real se compara contra el secreto del rival. Si no se conoce aún, se usa el secreto del rival recibido o simulado.
         }
 
-        async function addAttemptToTable(targetTable, guessedPokemon, targetSecretPokemon) {
+        function handleOpponentTableGuess(pokemon) {
+            // El oponente arriesgó un Pokémon, lo añadimos a su tabla (que nosotros vemos como "Intentos del Oponente")
+            addAttemptToTable('opponent', pokemon, mySecretPokemon);
+        }
+
+        async function addAttemptToTable(targetTable, guessedPokemon, secretPokemon) {
             await enrichPokemonData(guessedPokemon);
-            await enrichPokemonData(targetSecretPokemon);
+            await enrichPokemonData(secretPokemon);
 
-            const guessedTypesSorted = [...guessedPokemon.types].sort();
-            const secretTypesSorted = [...targetSecretPokemon.types].sort();
-            const typeMatch = JSON.stringify(guessedTypesSorted) === JSON.stringify(secretTypesSorted);
-            const typeText = guessedPokemon.types.map(t => typeTranslations[t] || t).join(' / ');
+            // Evaluamos coincidencias
+            const typeMatch = JSON.stringify(guessedPokemon.types.sort()) === JSON.stringify(secretPokemon.types.sort());
+            const genMatch = guessedPokemon.gen === secretPokemon.gen;
+            const genArrow = guessedPokemon.gen < secretPokemon.gen ? '↑' : '↓';
 
-            const genMatch = guessedPokemon.gen === targetSecretPokemon.gen;
-            const genText = `Gen ${guessedPokemon.gen}`;
+            const weightMatch = guessedPokemon.weight === secretPokemon.weight;
+            const weightArrow = guessedPokemon.weight < secretPokemon.weight ? '↑' : '↓';
 
-            const colorMatch = guessedPokemon.color === targetSecretPokemon.color;
-            const colorText = colorTranslations[guessedPokemon.color] || guessedPokemon.color;
+            const heightMatch = guessedPokemon.height === secretPokemon.height;
+            const heightArrow = guessedPokemon.height < secretPokemon.height ? '↑' : '↓';
 
-            const weightMatch = guessedPokemon.weight === targetSecretPokemon.weight;
-            const weightArrow = guessedPokemon.weight < targetSecretPokemon.weight ? '↑' : '↓';
-            const weightText = `${guessedPokemon.weight}kg ${weightMatch ? '' : weightArrow}`;
-
-            const heightMatch = guessedPokemon.height === targetSecretPokemon.height;
-            const heightArrow = guessedPokemon.height < targetSecretPokemon.height ? '↑' : '↓';
-            const heightText = `${guessedPokemon.height}m ${heightMatch ? '' : heightArrow}`;
-
-            const stageMatch = guessedPokemon.stage === targetSecretPokemon.stage;
-            const stageText = guessedPokemon.stage;
+            const stageMatch = guessedPokemon.stage === secretPokemon.stage;
 
             const tbodyId = targetTable === 'my' ? 'my-table-attempts-body' : 'opponent-table-attempts-body';
             const tbody = document.getElementById(tbodyId);
 
-            if (tbody.innerHTML.includes("Aún no has hecho") || tbody.innerHTML.includes("El oponente aún no ha")) {
+            // Si es el primer intento, limpiamos el mensaje de "Aún no hay intentos"
+            if (tbody.innerHTML.includes("Aún no hay intentos") || tbody.innerHTML.includes("El oponente aún no ha")) {
                 tbody.innerHTML = "";
             }
 
@@ -1122,102 +974,54 @@
                     <span class="font-bold">${guessedPokemon.displayName}</span>
                 </td>
                 <td class="p-2">
-                    <span class="px-2 py-1 rounded text-[10px] ${typeMatch ? 'match-success' : 'match-fail'} block text-center capitalize">
-                        ${typeText}
+                    <span class="px-2 py-1 rounded text-[10px] ${typeMatch ? 'match-success' : 'match-fail'}">
+                        ${typeMatch ? '✔ Coincide' : '✖ Incorrecto'}
                     </span>
                 </td>
                 <td class="p-2">
-                    <span class="px-2 py-1 rounded text-[10px] ${genMatch ? 'match-success' : 'match-fail'} block text-center">
-                        ${genText}
+                    <span class="px-2 py-1 rounded text-[10px] ${genMatch ? 'match-success' : 'match-fail'}">
+                        Gen ${guessedPokemon.gen} ${genMatch ? '✔' : genArrow}
                     </span>
                 </td>
                 <td class="p-2">
-                    <span class="px-2 py-1 rounded text-[10px] ${colorMatch ? 'match-success' : 'match-fail'} block text-center capitalize">
-                        ${colorText}
+                    <span class="px-2 py-1 rounded text-[10px] ${weightMatch ? 'match-success' : 'match-fail'}">
+                        ${guessedPokemon.weight}kg ${weightMatch ? '✔' : weightArrow}
                     </span>
                 </td>
                 <td class="p-2">
-                    <span class="px-2 py-1 rounded text-[10px] ${weightMatch ? 'match-success' : 'match-fail'} block text-center">
-                        ${weightText}
+                    <span class="px-2 py-1 rounded text-[10px] ${heightMatch ? 'match-success' : 'match-fail'}">
+                        ${guessedPokemon.height}m ${heightMatch ? '✔' : heightArrow}
                     </span>
                 </td>
                 <td class="p-2">
-                    <span class="px-2 py-1 rounded text-[10px] ${heightMatch ? 'match-success' : 'match-fail'} block text-center">
-                        ${heightText}
-                    </span>
-                </td>
-                <td class="p-2">
-                    <span class="px-2 py-1 rounded text-[10px] ${stageMatch ? 'match-success' : 'match-fail'} block text-center">
-                        ${stageText}
+                    <span class="px-2 py-1 rounded text-[10px] ${stageMatch ? 'match-success' : 'match-fail'}">
+                        ${guessedPokemon.stage} ${stageMatch ? '✔' : '✖'}
                     </span>
                 </td>
             `;
             tbody.appendChild(row);
 
-            if (guessedPokemon.id === targetSecretPokemon.id) {
-                const winnerName = targetTable === 'my' ? myUsername : "El Oponente";
-                triggerGameOver(winnerName, targetSecretPokemon.displayName);
-                
-                const winPayload = { type: 'PLAYER_WON', winnerName: winnerName, pokemonName: targetSecretPokemon.displayName };
-                if(isHost) broadcast(winPayload);
-                else if(conn && conn.open) conn.send(winPayload);
+            // Verificamos si adivinó por completo
+            if (guessedPokemon.id === secretPokemon.id) {
+                triggerGameOver(targetTable === 'my' ? myUsername : "El Oponente", secretPokemon.displayName);
             }
         }
 
         function applyAutomaticFiltersFromGuess(guessed, secret) {
+            // Filtramos automáticamente la grilla de candidatos del Modo Tabla basándonos en pistas lógicas
             document.querySelectorAll('.pokemon-card-table').forEach(card => {
-                const cardId = parseInt(card.dataset.id);
                 const w = parseFloat(card.dataset.weight);
                 const h = parseFloat(card.dataset.height);
                 const gen = parseInt(card.dataset.gen);
-                const color = card.dataset.color;
-                const stage = card.dataset.stage;
-                const cardTypes = JSON.parse(card.dataset.types || '[]');
-                
                 let eliminate = false;
 
-                if (cardId === guessed.id && guessed.id !== secret.id) {
-                    eliminate = true;
-                }
-
-                if (guessed.gen === secret.gen) {
-                    if (gen !== secret.gen) eliminate = true;
-                } else {
-                    if (gen === guessed.gen) eliminate = true;
-                }
-
-                if (guessed.color === secret.color) {
-                    if (color !== secret.color) eliminate = true;
-                } else {
-                    if (color === guessed.color) eliminate = true;
-                }
-
-                if (guessed.stage === secret.stage) {
-                    if (stage !== secret.stage) eliminate = true;
-                } else {
-                    if (stage === guessed.stage) eliminate = true;
-                }
-
-                const secretTypes = secret.types;
-                const guessedTypes = guessed.types;
-                
-                const hasCommonGuessedType = cardTypes.some(t => guessedTypes.includes(t));
-                const sharedTypesWithGuessed = cardTypes.filter(t => guessedTypes.includes(t));
-                const actualSharedWithSecret = secretTypes.filter(t => guessedTypes.includes(t));
-                
-                if (actualSharedWithSecret.length > 0) {
-                    if (sharedTypesWithGuessed.length === 0) eliminate = true;
-                } else {
-                    if (hasCommonGuessedType) eliminate = true;
-                }
-
+                // Si el peso del secreto es mayor y el arriesgado era menor -> eliminamos los más livianos o iguales al arriesgado
                 if (guessed.weight < secret.weight && w <= guessed.weight) eliminate = true;
                 if (guessed.weight > secret.weight && w >= guessed.weight) eliminate = true;
-                if (guessed.weight === secret.weight && w !== secret.weight) eliminate = true;
 
+                // Si la altura del secreto es mayor y el arriesgado era menor -> eliminamos los más bajos o iguales
                 if (guessed.height < secret.height && h <= guessed.height) eliminate = true;
                 if (guessed.height > secret.height && h >= guessed.height) eliminate = true;
-                if (guessed.height === secret.height && h !== secret.height) eliminate = true;
 
                 if (eliminate) {
                     card.classList.add('eliminated');
