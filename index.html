@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Who's That Pokémon? - Modo Tabla Corregido</title>
+    <title>Who's That Pokémon? - Modo Tabla Completo</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- PeerJS para conexión P2P -->
@@ -390,7 +390,7 @@
                 selectedGenerations = data.gens;
                 playersList = data.players;
                 gameMode = data.mode || gameMode;
-                currentTurnIndex = data.turnIndex; // Sincroniza exactamente el turno elegido por el host
+                currentTurnIndex = data.turnIndex;
                 
                 initGamePool();
                 buildSecretSelectionGrid();
@@ -426,7 +426,6 @@
         }
 
         function startPokemonSelection() {
-            // El anfitrión define aleatoriamente quién empieza y lo distribuye
             currentTurnIndex = Math.floor(Math.random() * playersList.length);
             
             const startPayload = { 
@@ -540,7 +539,6 @@
                 </div>
             `;
             
-            // Asignación correcta de tu índice local en base a tu peer.id exacto
             const myId = peer.id;
             const foundIdx = playersList.findIndex(p => p.id === myId);
             myPlayerIndex = foundIdx !== -1 ? foundIdx : 0;
@@ -578,9 +576,15 @@
                 await enrichPokemonData(p);
                 const card = document.createElement('div');
                 card.className = "pokemon-card-table bg-slate-900 border border-slate-700 rounded-xl p-1 flex flex-col items-center justify-between text-xs h-28 cursor-pointer hover:border-amber-500 transition";
+                
+                // Guardamos todos los atributos en el dataset para los filtros automáticos
                 card.dataset.id = p.id;
                 card.dataset.weight = p.weight;
                 card.dataset.height = p.height;
+                card.dataset.gen = p.gen;
+                card.dataset.color = p.color;
+                card.dataset.stage = p.stage;
+                card.dataset.types = JSON.stringify(p.types);
                 
                 card.innerHTML = `
                     <span class="text-[9px] text-slate-400 font-mono">#${String(p.id).padStart(3, '0')}</span>
@@ -721,12 +725,54 @@
                 const cardId = parseInt(card.dataset.id);
                 const w = parseFloat(card.dataset.weight);
                 const h = parseFloat(card.dataset.height);
+                const gen = parseInt(card.dataset.gen);
+                const color = card.dataset.color;
+                const stage = card.dataset.stage;
+                const cardTypes = JSON.parse(card.dataset.types || '[]');
+                
                 let eliminate = false;
 
+                // 1. Si el pokemon es el mismo que intentaste y no era el secreto
                 if (cardId === guessed.id && guessed.id !== secret.id) {
                     eliminate = true;
                 }
 
+                // 2. Filtro por Generación
+                if (guessed.gen === secret.gen) {
+                    if (gen !== secret.gen) eliminate = true;
+                } else {
+                    if (gen === guessed.gen) eliminate = true;
+                }
+
+                // 3. Filtro por Color
+                if (guessed.color === secret.color) {
+                    if (color !== secret.color) eliminate = true;
+                } else {
+                    if (color === guessed.color) eliminate = true;
+                }
+
+                // 4. Filtro por Etapa Evolutiva
+                if (guessed.stage === secret.stage) {
+                    if (stage !== secret.stage) eliminate = true;
+                } else {
+                    if (stage === guessed.stage) eliminate = true;
+                }
+
+                // 5. Filtro por Tipos
+                const secretTypes = secret.types;
+                const guessedTypes = guessed.types;
+                
+                const hasCommonGuessedType = cardTypes.some(t => guessedTypes.includes(t));
+                const sharedTypesWithGuessed = cardTypes.filter(t => guessedTypes.includes(t));
+                const actualSharedWithSecret = secretTypes.filter(t => guessedTypes.includes(t));
+                
+                if (actualSharedWithSecret.length > 0) {
+                    if (sharedTypesWithGuessed.length === 0) eliminate = true;
+                } else {
+                    if (hasCommonGuessedType) eliminate = true;
+                }
+
+                // 6. Filtros de Peso y Altura
                 if (guessed.weight < secret.weight && w <= guessed.weight) eliminate = true;
                 if (guessed.weight > secret.weight && w >= guessed.weight) eliminate = true;
                 if (guessed.weight === secret.weight && w !== secret.weight) eliminate = true;
