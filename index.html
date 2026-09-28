@@ -390,7 +390,8 @@
                 selectedGenerations = data.gens;
                 playersList = data.players;
                 gameMode = data.mode || gameMode;
-                currentTurnIndex = data.turnIndex;
+                currentTurnIndex = data.turnIndex; // Sincroniza exactamente el turno elegido por el host
+                
                 initGamePool();
                 buildSecretSelectionGrid();
                 showView('view-select-secret');
@@ -425,11 +426,21 @@
         }
 
         function startPokemonSelection() {
+            // El anfitrión define aleatoriamente quién empieza y lo distribuye
             currentTurnIndex = Math.floor(Math.random() * playersList.length);
-            broadcast({ type: 'START_GAME_STATE', gens: selectedGenerations, players: playersList, turnIndex: currentTurnIndex, mode: gameMode });
+            
+            const startPayload = { 
+                type: 'START_GAME_STATE', 
+                gens: selectedGenerations, 
+                players: playersList, 
+                turnIndex: currentTurnIndex, 
+                mode: gameMode 
+            };
+
             initGamePool();
             buildSecretSelectionGrid();
             showView('view-select-secret');
+            broadcast(startPayload);
         }
 
         function initGamePool() {
@@ -529,7 +540,8 @@
                 </div>
             `;
             
-            const myId = isHost ? peer.id : conn.peer;
+            // Asignación correcta de tu índice local en base a tu peer.id exacto
+            const myId = peer.id;
             const foundIdx = playersList.findIndex(p => p.id === myId);
             myPlayerIndex = foundIdx !== -1 ? foundIdx : 0;
 
@@ -537,7 +549,6 @@
                 buildTableGameBoard();
                 showView('view-game-table-mode');
             } else {
-                // Aquí se puede manejar la transición al modo clásico si lo deseas mantener integrado
                 showView('view-game-table-mode');
             }
             updateTurnState();
