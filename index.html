@@ -131,11 +131,11 @@
 
         <!-- VISTA 4: TABLERO DE JUEGO PRINCIPAL -->
         <div id="view-game-board" class="w-full max-w-6xl space-y-4 hidden">
-            <!-- Panel Superior -->
+            <!-- Panel Superior con Tarjeta Detallada del Secreto -->
             <div class="bg-slate-800 border border-slate-700 rounded-xl p-4 flex flex-wrap justify-between items-center gap-4 shadow-lg">
                 <div class="flex items-center gap-3">
                     <span class="text-xs text-slate-400 uppercase font-bold">Tu Secreto:</span>
-                    <div id="my-secret-preview" class="flex items-center gap-2 bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-700"></div>
+                    <div id="my-secret-preview" class="flex items-center gap-3 bg-slate-900 px-3 py-2 rounded-lg border border-slate-700"></div>
                 </div>
 
                 <div class="flex flex-wrap gap-2">
@@ -501,7 +501,7 @@
             const filtered = activePokemonPool.filter(p => p.name.includes(filter.toLowerCase()));
             grid.innerHTML = '';
 
-            for (let p of filtered) { // Se quitó el límite de .slice(0, 40) para mostrar la grilla completa
+            for (let p of filtered) {
                 await enrichPokemonData(p);
                 const card = document.createElement('div');
                 card.className = "bg-slate-800 border border-slate-700 rounded-xl p-2 flex flex-col items-center cursor-pointer hover:border-red-500 transition group text-xs";
@@ -521,13 +521,21 @@
             buildSecretSelectionGrid(document.getElementById('search-select-pokemon').value);
         }
 
-        function selectMySecret(pokemon) {
+        async function selectMySecret(pokemon) {
+            await enrichPokemonData(pokemon);
             mySecretPokemon = pokemon;
             buildGameBoard();
-            const translatedTypes = pokemon.types.map(t => typeTranslations[t] || t).join(', ');
+            
+            const translatedTypes = pokemon.types.map(t => typeTranslations[t] || t).join(' / ');
+            const colorEsp = colorTranslations[pokemon.color] || pokemon.color;
+
             document.getElementById('my-secret-preview').innerHTML = `
-                <img src="${pokemon.sprite}" class="w-10 h-10">
-                <span class="text-xs font-bold text-white">${pokemon.displayName} (#${pokemon.id}) - <span class="text-red-400">${translatedTypes}</span></span>
+                <img src="${pokemon.sprite}" class="w-12 h-12 object-contain">
+                <div class="flex flex-col text-xs leading-tight">
+                    <span class="font-bold text-white text-sm">${pokemon.displayName} <span class="text-slate-400 font-mono text-xs">#${String(pokemon.id).padStart(3, '0')}</span></span>
+                    <span class="text-red-400 font-semibold mt-0.5">Tipos: ${translatedTypes}</span>
+                    <span class="text-slate-300 text-[10px] mt-0.5">Gen ${pokemon.gen} | 🎨 ${colorEsp} | ${pokemon.stage} | ⚖️ ${pokemon.weight}kg | 📏 ${pokemon.height}m</span>
+                </div>
             `;
             showView('view-game-board');
         }
