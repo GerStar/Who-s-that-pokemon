@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Who's That Pokémon? - Versión Corregida de Turnos</title>
+    <title>Who's That Pokémon? - Versión Modo Tabla Corregida</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- PeerJS para conexión P2P -->
@@ -30,12 +30,10 @@
             color: #f87171;
             font-weight: bold;
         }
-        /* Contorno amarillo para filtros activos */
         .filter-active-highlight {
             border: 2px solid #facc15 !important;
             box-shadow: 0 0 10px rgba(250, 204, 21, 0.4);
         }
-        /* Bloqueo visual cuando no es tu turno */
         .disabled-by-turn {
             opacity: 0.5;
             pointer-events: none;
@@ -86,7 +84,6 @@
                     <input type="text" id="input-username" placeholder="Ej. Ash Ketchum" class="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-red-500 text-center font-bold">
                 </div>
 
-                <!-- SELECCIÓN DE MODALIDAD DE JUEGO -->
                 <div>
                     <label class="block text-xs font-semibold text-slate-400 mb-1">Modalidad de Juego:</label>
                     <select id="select-game-mode" class="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-red-500 text-sm font-semibold">
@@ -95,7 +92,6 @@
                     </select>
                 </div>
 
-                <!-- SELECCIÓN DE GENERACIONES -->
                 <div class="space-y-2 bg-slate-900/60 p-3 rounded-xl border border-slate-700">
                     <div class="flex justify-between items-center">
                         <span class="text-xs font-bold text-slate-300 uppercase">Generaciones a incluir:</span>
@@ -131,7 +127,7 @@
             </div>
         </div>
 
-        <!-- VISTA 2: SALA DE ESPERA (LOBBY) -->
+        <!-- VISTA 2: SALA DE ESPERA -->
         <div id="view-waiting-room" class="w-full max-w-lg bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-2xl text-center space-y-6 hidden">
             <div>
                 <h2 class="text-xl font-bold text-red-400">Sala de Espera</h2>
@@ -155,7 +151,7 @@
             </div>
         </div>
 
-        <!-- VISTA 3: SELECCIÓN DE TU POKÉMON SECRETO -->
+        <!-- VISTA 3: SELECCIÓN DE POKÉMON SECRETO -->
         <div id="view-select-secret" class="w-full max-w-4xl bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-2xl space-y-4 hidden">
             <div class="text-center space-y-1">
                 <h2 class="text-xl font-bold text-red-400">Elige tu Pokémon Secreto</h2>
@@ -166,7 +162,7 @@
             <div id="secret-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 max-h-96 overflow-y-auto p-2 bg-slate-900 rounded-xl border border-slate-700"></div>
         </div>
 
-        <!-- VISTA 4A: TABLERO DE JUEGO MODO CLÁSICO -->
+        <!-- VISTA 4A: MODO CLÁSICO -->
         <div id="view-game-board" class="w-full max-w-6xl space-y-4 hidden">
             <div class="bg-slate-800 border border-slate-700 rounded-xl p-4 flex flex-wrap justify-between items-center gap-4 shadow-lg">
                 <div class="flex items-center gap-3">
@@ -184,7 +180,6 @@
                 </div>
             </div>
 
-            <!-- CONTROLES Y FILTROS CLÁSICOS (Bloqueables fuera de turno) -->
             <div id="classic-controls-wrapper" class="space-y-4">
                 <div class="bg-slate-800 border border-slate-700 rounded-xl p-3 space-y-3 shadow">
                     <div class="flex justify-between items-center">
@@ -198,8 +193,8 @@
                                 <option value="">Tipo...</option>
                                 <option value="normal">Normal</option><option value="fire">Fuego</option><option value="water">Agua</option><option value="grass">Planta</option><option value="electric">Eléctrico</option><option value="ice">Hielo</option><option value="fighting">Lucha</option><option value="poison">Veneno</option><option value="ground">Tierra</option><option value="flying">Volador</option><option value="psychic">Psíquico</option><option value="bug">Bicho</option><option value="rock">Roca</option><option value="ghost">Fantasma</option><option value="dragon">Dragón</option><option value="steel">Acero</option><option value="fairy">Hada</option>
                             </select>
-                            <button onclick="eliminateByType(true)" class="bg-red-900/60 hover:bg-red-800 text-red-200 px-2 py-1 rounded font-semibold" title="Descartar este tipo">❌</button>
-                            <button onclick="eliminateByType(false)" class="bg-emerald-900/60 hover:bg-emerald-800 text-emerald-200 px-2 py-1 rounded font-semibold" title="Descartar NO este tipo">✅</button>
+                            <button onclick="eliminateByType(true)" class="bg-red-900/60 hover:bg-red-800 text-red-200 px-2 py-1 rounded font-semibold">❌</button>
+                            <button onclick="eliminateByType(false)" class="bg-emerald-900/60 hover:bg-emerald-800 text-emerald-200 px-2 py-1 rounded font-semibold">✅</button>
                             <button onclick="undoFilter('type')" class="bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded font-bold">✖</button>
                         </div>
 
@@ -261,16 +256,15 @@
 
             <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 shadow-2xl">
                 <div class="mb-3 flex justify-between items-center px-2">
-                    <span class="text-xs font-bold text-slate-400 uppercase">Tablero de Descarte (<span id="remaining-count">0</span> restantes) - <span class="text-amber-400">Haz clic en un Pokémon para gestionarlo</span></span>
+                    <span class="text-xs font-bold text-slate-400 uppercase">Tablero de Descarte (<span id="remaining-count">0</span> restantes)</span>
                     <input type="text" id="search-board-pokemon" placeholder="🔍 Filtrar nombre..." oninput="filterBoard()" class="px-3 py-1 bg-slate-900 border border-slate-700 rounded-lg text-white text-xs focus:outline-none focus:border-red-500 w-48">
                 </div>
                 <div id="game-board-grid" class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 max-h-[52vh] overflow-y-auto p-1"></div>
             </div>
         </div>
 
-        <!-- VISTA 4B: TABLERO DE JUEGO MODO TABLA -->
+        <!-- VISTA 4B: MODO TABLA (CORREGIDO) -->
         <div id="view-game-table-mode" class="w-full max-w-6xl space-y-4 hidden">
-            <!-- Panel Superior con Secreto y Botón de Terminar Turno -->
             <div class="bg-slate-800 border border-slate-700 rounded-xl p-4 flex flex-wrap justify-between items-center gap-4 shadow-lg">
                 <div class="flex items-center gap-3">
                     <span class="text-xs text-slate-400 uppercase font-bold">Tu Secreto:</span>
@@ -284,9 +278,7 @@
                 </div>
             </div>
 
-            <!-- Tablas de Seguimiento Mejoradas (Responsive y sin desbordamientos feos) -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <!-- Tu Tabla de Intentos -->
                 <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 shadow-xl space-y-3">
                     <h3 class="text-xs font-bold text-amber-400 uppercase">📊 Tus Intentos Realizados</h3>
                     <div class="overflow-x-auto max-h-80">
@@ -308,7 +300,6 @@
                     </div>
                 </div>
 
-                <!-- Tabla de Intentos del Oponente -->
                 <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 shadow-xl space-y-3">
                     <h3 class="text-xs font-bold text-red-400 uppercase">👥 Intentos del Oponente</h3>
                     <div class="overflow-x-auto max-h-80">
@@ -331,7 +322,6 @@
                 </div>
             </div>
 
-            <!-- Grilla de Candidatos (Seleccionable directamente para el intento) -->
             <div id="table-candidates-wrapper" class="bg-slate-800 border border-slate-700 rounded-2xl p-4 shadow-2xl">
                 <div class="mb-3 flex justify-between items-center px-2">
                     <span class="text-xs font-bold text-slate-400 uppercase">Selecciona 1 Pokémon de la grilla para tu intento (<span id="table-remaining-count">0</span> restantes)</span>
@@ -343,17 +333,17 @@
 
     </main>
 
-    <!-- MODAL PERSONALIZADO PARA CLÁSICO (Descartar / Arriesgar / Cerrar) -->
+    <!-- MODAL CLÁSICO -->
     <div id="modal-classic-action" class="fixed inset-0 bg-black/85 flex items-center justify-center p-4 z-50 hidden">
         <div class="bg-slate-800 border border-slate-700 rounded-2xl max-w-sm w-full p-5 text-center space-y-4 shadow-2xl">
             <h3 class="text-sm font-bold text-red-400 uppercase">Acción de Juego</h3>
             <div id="classic-modal-preview" class="flex items-center gap-3 bg-slate-900 p-3 rounded-xl border border-slate-700 text-left"></div>
             <div class="flex flex-col gap-2">
                 <button id="btn-modal-discard" class="bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 px-4 rounded-xl transition text-xs flex items-center justify-center gap-2">
-                    🗑️ Descartar Pokémon (Ocultar)
+                    🗑️ Descartar Pokémon
                 </button>
                 <button id="btn-modal-guess" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-2 px-4 rounded-xl transition text-xs flex items-center justify-center gap-2">
-                    ⚡ Arriesgar (Finalizar juego)
+                    ⚡ Arriesgar
                 </button>
                 <button id="btn-modal-close" class="bg-slate-700 hover:bg-slate-600 text-white font-bold py-2 px-4 rounded-xl transition text-xs">
                     Cerrar
@@ -362,7 +352,7 @@
         </div>
     </div>
 
-    <!-- MODAL DE SELECCIÓN DE TURNO INICIAL -->
+    <!-- MODAL TURNO INICIAL -->
     <div id="modal-select-first-turn" class="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50 hidden">
         <div class="bg-slate-800 border border-slate-700 rounded-2xl max-w-md w-full p-6 text-center space-y-4 shadow-2xl">
             <h3 class="text-xl font-black text-amber-400">¿Quién comienza la partida?</h3>
@@ -371,7 +361,7 @@
         </div>
     </div>
 
-    <!-- MODAL DE VICTORIA / DERROTA -->
+    <!-- MODAL VICTORIA / DERROTA -->
     <div id="modal-result" class="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50 hidden">
         <div class="bg-slate-800 border border-slate-700 rounded-2xl max-w-md w-full p-6 text-center space-y-4 shadow-2xl">
             <h2 id="result-title" class="text-3xl font-black text-emerald-400">¡VICTORIA!</h2>
@@ -395,11 +385,8 @@
         let selectedGenerations = [1, 2, 3, 4, 5, 6, 7, 8, 9];
         let gameMode = "classic"; 
 
-        // Gestión de Turnos
         let currentTurnPeerId = "";
         let turnOrder = [];
-
-        // Selección activa en Modo Tabla para el turno actual
         let selectedTableAttempt = null;
         let classicSelectedPokemon = null;
 
@@ -744,7 +731,6 @@
                 showView('view-game-table-mode');
             }
 
-            // Una vez que el jugador elige su secreto, pedimos abrir el selector de turno inicial al Host
             if (isHost) {
                 showFirstTurnSelector();
             } else if (conn && conn.open) {
@@ -760,7 +746,6 @@
                 btn.className = "w-full bg-slate-900 hover:bg-slate-700 text-white font-bold py-2.5 px-4 rounded-xl border border-slate-700 transition flex justify-between items-center text-xs";
                 btn.innerHTML = `<span>👤 ${p.name}</span> <span class="text-amber-400">Elegir para empezar</span>`;
                 btn.onclick = () => {
-                    // Armamos el orden de turnos empezando por el jugador elegido y rotando al resto
                     let selectedIdx = playersList.findIndex(item => item.id === p.id);
                     let orderedPlayers = [...playersList.slice(selectedIdx), ...playersList.slice(0, selectedIdx)];
                     turnOrder = orderedPlayers.map(item => item.id);
@@ -789,7 +774,6 @@
             for (let p of filtered) {
                 await enrichPokemonData(p);
                 const card = document.createElement('div');
-                // CORRECCIÓN DE DIMENSIONES Y ESPACIADO INTERNO: Se usa flex-col compacto con padding vertical reducido (py-1) para dejar espacio al sprite y datos
                 card.className = "pokemon-card bg-slate-900 border border-slate-700 rounded-xl p-2 flex flex-col items-center justify-between cursor-pointer relative select-none text-xs h-48";
                 card.id = `board-card-${p.id}`;
                 card.dataset.id = p.id;
@@ -1022,7 +1006,7 @@
         }
 
 
-        // --- MODO TABLA ---
+        // --- MODO TABLA (CORREGIDO) ---
         async function buildTableGameBoard(filter = "") {
             const grid = document.getElementById('table-game-board-grid');
             grid.innerHTML = '<div class="col-span-full text-center text-xs text-slate-400 py-4">Cargando candidatos...</div>';
@@ -1033,7 +1017,6 @@
             for (let p of filtered) {
                 await enrichPokemonData(p);
                 const card = document.createElement('div');
-                // CORRECCIÓN DE DIMENSIONES Y ESPACIADO INTERNO: Estructura idéntica y optimizada para el Modo Tabla
                 card.className = "pokemon-card-table bg-slate-900 border border-slate-700 rounded-xl p-2 flex flex-col items-center justify-between cursor-pointer relative select-none text-xs h-48";
                 card.dataset.id = p.id;
                 card.dataset.types = JSON.stringify(p.types);
@@ -1120,13 +1103,17 @@
             const translatedGuessedTypes = guessedPokemon.types.map(t => typeTranslations[t] || t).join(' / ');
             
             const genMatch = guessedPokemon.gen === secretPokemon.gen;
-            const genArrow = guessedPokemon.gen < secretPokemon.gen ? ' ↓' : ' ↑';
+            // CORRECCIÓN 1: La generación NO debe mostrar flechas direccionales, solo el indicador de acierto/fallo.
+            const genSpan = `<span class="px-2 py-1 rounded text-[10px] ${genMatch ? 'match-success' : 'match-fail'}">Gen ${guessedPokemon.gen} ${genMatch ? '✔' : '✖'}</span>`;
 
+            // CORRECCIÓN 2: Corrección en las flechas de peso y altura. Si guessed < secret, el valor correcto es MAYOR (flecha hacia arriba ↑).
             const weightMatch = guessedPokemon.weight === secretPokemon.weight;
-            const weightArrow = guessedPokemon.weight < secretPokemon.weight ? ' ↓' : ' ↑';
+            const weightArrow = guessedPokemon.weight < secretPokemon.weight ? ' ↑' : ' ↓';
+            const weightSpan = `<span class="px-2 py-1 rounded text-[10px] ${weightMatch ? 'match-success' : 'match-fail'}">${guessedPokemon.weight}kg ${weightMatch ? '✔' : weightArrow}</span>`;
 
             const heightMatch = guessedPokemon.height === secretPokemon.height;
-            const heightArrow = guessedPokemon.height < secretPokemon.height ? ' ↓' : ' ↑';
+            const heightArrow = guessedPokemon.height < secretPokemon.height ? ' ↑' : ' ↓';
+            const heightSpan = `<span class="px-2 py-1 rounded text-[10px] ${heightMatch ? 'match-success' : 'match-fail'}">${guessedPokemon.height}m ${heightMatch ? '✔' : heightArrow}</span>`;
 
             const stageMatch = guessedPokemon.stage === secretPokemon.stage;
 
@@ -1150,21 +1137,9 @@
                         ${typeMatch ? '✔ ' + translatedGuessedTypes : translatedGuessedTypes + ' ✖'}
                     </span>
                 </td>
-                <td class="p-2.5">
-                    <span class="px-2 py-1 rounded text-[10px] ${genMatch ? 'match-success' : 'match-fail'}">
-                        Gen ${guessedPokemon.gen} ${genMatch ? '✔' : genArrow}
-                    </span>
-                </td>
-                <td class="p-2.5">
-                    <span class="px-2 py-1 rounded text-[10px] ${weightMatch ? 'match-success' : 'match-fail'}">
-                        ${guessedPokemon.weight}kg ${weightMatch ? '✔' : weightArrow}
-                    </span>
-                </td>
-                <td class="p-2.5">
-                    <span class="px-2 py-1 rounded text-[10px] ${heightMatch ? 'match-success' : 'match-fail'}">
-                        ${guessedPokemon.height}m ${heightMatch ? '✔' : heightArrow}
-                    </span>
-                </td>
+                <td class="p-2.5">${genSpan}</td>
+                <td class="p-2.5">${weightSpan}</td>
+                <td class="p-2.5">${heightSpan}</td>
                 <td class="p-2.5">
                     <span class="px-2 py-1 rounded text-[10px] ${stageMatch ? 'match-success' : 'match-fail'}">
                         ${guessedPokemon.stage} ${stageMatch ? '✔' : '✖'}
@@ -1178,6 +1153,7 @@
             }
         }
 
+        // CORRECCIÓN 3: Filtros automáticos mejorados para eliminar correctamente las opciones según los errores del intento
         function applyAutomaticFiltersFromTableGuess(guessed, secret) {
             const typeMatch = JSON.stringify(guessed.types.sort()) === JSON.stringify(secret.types.sort());
             const genMatch = guessed.gen === secret.gen;
@@ -1194,16 +1170,17 @@
 
                 let eliminate = false;
 
+                // Tipo
                 if (typeMatch) {
                     const cardTypeSorted = JSON.stringify(cardTypes.sort());
                     if (cardTypeSorted !== JSON.stringify(guessed.types.sort())) eliminate = true;
                 } else {
+                    // Si el tipo no coincide, eliminamos pokemones que contengan los tipos incorrectos probados
                     const sharesType = guessed.types.some(t => cardTypes.includes(t));
-                    const cardTypeSorted = JSON.stringify(cardTypes.sort());
-                    const guessedTypeSorted = JSON.stringify(guessed.types.sort());
-                    if (!sharesType || cardTypeSorted === guessedTypeSorted) eliminate = true;
+                    if (sharesType) eliminate = true;
                 }
 
+                // Generación
                 if (genMatch) {
                     if (cardGen !== guessed.gen) eliminate = true;
                 } else {
@@ -1212,12 +1189,14 @@
                     if (guessed.gen > secret.gen && cardGen >= guessed.gen) eliminate = true;
                 }
 
+                // Fase Evolutiva
                 if (stageMatch) {
                     if (cardStage !== guessed.stage) eliminate = true;
                 } else {
                     if (cardStage === guessed.stage) eliminate = true;
                 }
 
+                // Peso
                 if (weightMatch) {
                     if (cardWeight !== guessed.weight) eliminate = true;
                 } else {
@@ -1226,6 +1205,7 @@
                     if (guessed.weight > secret.weight && cardWeight >= guessed.weight) eliminate = true;
                 }
 
+                // Altura
                 if (heightMatch) {
                     if (cardHeight !== guessed.height) eliminate = true;
                 } else {
