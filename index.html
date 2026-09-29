@@ -362,6 +362,15 @@
         </div>
     </div>
 
+    <!-- MODAL DE SELECCIÓN DE TURNO INICIAL -->
+    <div id="modal-select-first-turn" class="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl max-w-md w-full p-6 text-center space-y-4 shadow-2xl">
+            <h3 class="text-xl font-black text-amber-400">¿Quién comienza la partida?</h3>
+            <p class="text-xs text-slate-300">Selecciona al jugador que tendrá el primer turno:</p>
+            <div id="first-turn-players-list" class="space-y-2 max-h-48 overflow-y-auto"></div>
+        </div>
+    </div>
+
     <!-- MODAL DE VICTORIA / DERROTA -->
     <div id="modal-result" class="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50 hidden">
         <div class="bg-slate-800 border border-slate-700 rounded-2xl max-w-md w-full p-6 text-center space-y-4 shadow-2xl">
@@ -537,6 +546,8 @@
                 initGamePool();
                 buildSecretSelectionGrid();
                 showView('view-select-secret');
+            } else if (data.type === 'REQUEST_START_TURN_CHOICE' && isHost) {
+                showFirstTurnSelector();
             } else if (data.type === 'SET_TURN') {
                 currentTurnPeerId = data.turnId;
                 turnOrder = data.order;
@@ -571,16 +582,10 @@
         }
 
         function startPokemonSelection() {
-            let shuffledPlayers = [...playersList].sort(() => Math.random() - 0.5);
-            turnOrder = shuffledPlayers.map(p => p.id);
-            currentTurnPeerId = turnOrder[0];
-
             const startPayload = { 
                 type: 'START_SELECTION', 
                 gens: selectedGenerations, 
                 mode: gameMode, 
-                order: turnOrder, 
-                turnId: currentTurnPeerId,
                 players: playersList 
             };
 
@@ -724,7 +729,6 @@
                         <span class="text-slate-300 text-[10px] mt-0.5">Gen ${pokemon.gen} | 🎨 ${colorEsp} | ${pokemon.stage} | ⚖️ ${pokemon.weight}kg | 📏 ${pokemon.height}m</span>
                     </div>
                 `;
-                updateTurnUI();
                 buildGameBoard();
                 showView('view-game-board');
             } else {
@@ -736,10 +740,42 @@
                         <span class="text-slate-300 text-[10px] mt-0.5">Gen ${pokemon.gen} | 🎨 ${colorEsp} | ${pokemon.stage} | ⚖️ ${pokemon.weight}kg | 📏 ${pokemon.height}m</span>
                     </div>
                 `;
-                updateTurnUI();
                 buildTableGameBoard();
                 showView('view-game-table-mode');
             }
+
+            // Una vez que el jugador elige su secreto, pedimos abrir el selector de turno inicial al Host
+            if (isHost) {
+                showFirstTurnSelector();
+            } else if (conn && conn.open) {
+                conn.send({ type: 'REQUEST_START_TURN_CHOICE' });
+            }
+        }
+
+        function showFirstTurnSelector() {
+            const listContainer = document.getElementById('first-turn-players-list');
+            listContainer.innerHTML = '';
+            playersList.forEach(p => {
+                const btn = document.createElement('button');
+                btn.className = "w-full bg-slate-900 hover:bg-slate-700 text-white font-bold py-2.5 px-4 rounded-xl border border-slate-700 transition flex justify-between items-center text-xs";
+                btn.innerHTML = `<span>👤 ${p.name}</span> <span class="text-amber-400">Elegir para empezar</span>`;
+                btn.onclick = () => {
+                    // Armamos el orden de turnos empezando por el jugador elegido y rotando al resto
+                    let selectedIdx = playersList.findIndex(item => item.id === p.id);
+                    let orderedPlayers = [...playersList.slice(selectedIdx), ...playersList.slice(0, selectedIdx)];
+                    turnOrder = orderedPlayers.map(item => item.id);
+                    currentTurnPeerId = turnOrder[0];
+
+                    const turnPayload = { type: 'SET_TURN', turnId: currentTurnPeerId, order: turnOrder, players: playersList };
+                    if (isHost) {
+                        broadcast(turnPayload);
+                        updateTurnUI();
+                    }
+                    document.getElementById('modal-select-first-turn').classList.add('hidden');
+                };
+                listContainer.appendChild(btn);
+            });
+            document.getElementById('modal-select-first-turn').classList.remove('hidden');
         }
 
         // --- MODO CLÁSICO ---
@@ -753,7 +789,8 @@
             for (let p of filtered) {
                 await enrichPokemonData(p);
                 const card = document.createElement('div');
-                card.className = "pokemon-card bg-slate-900 border border-slate-700 rounded-xl p-1.5 flex flex-col items-center justify-between cursor-pointer relative select-none text-xs h-48";
+                // CORRECCIÓN DE DIMENSIONES Y ESPACIADO INTERNO: Se usa flex-col compacto con padding vertical reducido (py-1) para dejar espacio al sprite y datos
+                card.className = "pokemon-card bg-slate-900 border border-slate-700 rounded-xl p-2 flex flex-col items-center justify-between cursor-pointer relative select-none text-xs h-48";
                 card.id = `board-card-${p.id}`;
                 card.dataset.id = p.id;
                 card.dataset.types = JSON.stringify(p.types);
@@ -771,20 +808,19 @@
                         <span>#${String(p.id).padStart(3, '0')}</span>
                         <span>Gen ${p.gen}</span>
                     </div>
-                    <img src="${p.sprite}" class="w-36 h-36 pointer-events-none object-contain py-0.5">
-                    <div class="w-full text-center">
-                        <span class="font-bold truncate block pointer-events-none text-[11px] leading-tight">${p.displayName}</span>
-                        <div class="text-[9px] text-slate-400 pointer-events-none leading-tight mt-0.5">
+                    <img src="${p.sprite}" class="w-28 h-28 pointer-events-none object-contain my-auto">
+                    <div class="w-full text-center leading-tight">
+                        <span class="font-bold truncate block pointer-events-none text-[11px]">${p.displayName}</span>
+                        <div class="text-[9px] text-slate-400 pointer-events-none mt-0.5">
                             <span class="text-red-400 font-bold uppercase">${translatedTypes}</span> | 🎨 ${colorEsp}<br>
                             <span>${p.stage}</span> | ⚖️ ${p.weight}kg | 📏 ${p.height}m
                         </div>
                     </div>
                 `;
                 
-                // Clic directo en Modo Clásico: Abre el modal personalizado
                 card.onclick = () => {
                     const myId = peer ? peer.id : '';
-                    if (currentTurnPeerId !== myId) return; // Fuera de turno no interactúa
+                    if (currentTurnPeerId !== myId) return; 
                     openClassicActionModal(p);
                 };
                 grid.appendChild(card);
@@ -997,7 +1033,8 @@
             for (let p of filtered) {
                 await enrichPokemonData(p);
                 const card = document.createElement('div');
-                card.className = "pokemon-card-table bg-slate-900 border border-slate-700 rounded-xl p-1.5 flex flex-col items-center justify-between cursor-pointer relative select-none text-xs h-48";
+                // CORRECCIÓN DE DIMENSIONES Y ESPACIADO INTERNO: Estructura idéntica y optimizada para el Modo Tabla
+                card.className = "pokemon-card-table bg-slate-900 border border-slate-700 rounded-xl p-2 flex flex-col items-center justify-between cursor-pointer relative select-none text-xs h-48";
                 card.dataset.id = p.id;
                 card.dataset.types = JSON.stringify(p.types);
                 card.dataset.weight = p.weight;
@@ -1014,10 +1051,10 @@
                         <span>#${String(p.id).padStart(3, '0')}</span>
                         <span>Gen ${p.gen}</span>
                     </div>
-                    <img src="${p.sprite}" class="w-36 h-36 pointer-events-none object-contain py-0.5">
-                    <div class="w-full text-center">
-                        <span class="font-bold truncate block pointer-events-none text-[11px] leading-tight">${p.displayName}</span>
-                        <div class="text-[9px] text-slate-400 pointer-events-none leading-tight mt-0.5">
+                    <img src="${p.sprite}" class="w-28 h-28 pointer-events-none object-contain my-auto">
+                    <div class="w-full text-center leading-tight">
+                        <span class="font-bold truncate block pointer-events-none text-[11px]">${p.displayName}</span>
+                        <div class="text-[9px] text-slate-400 pointer-events-none mt-0.5">
                             <span class="text-red-400 font-bold uppercase">${translatedTypes}</span> | 🎨 ${colorEsp}<br>
                             <span>${p.stage}</span> | ⚖️ ${p.weight}kg | 📏 ${p.height}m
                         </div>
@@ -1157,36 +1194,30 @@
 
                 let eliminate = false;
 
-                // 1. Filtrado de Tipo
                 if (typeMatch) {
                     const cardTypeSorted = JSON.stringify(cardTypes.sort());
                     if (cardTypeSorted !== JSON.stringify(guessed.types.sort())) eliminate = true;
                 } else {
-                    // Si no coincide exactamente, descartar los que no comparten ningún tipo o tienen exactamente el incorrecto probado
                     const sharesType = guessed.types.some(t => cardTypes.includes(t));
                     const cardTypeSorted = JSON.stringify(cardTypes.sort());
                     const guessedTypeSorted = JSON.stringify(guessed.types.sort());
                     if (!sharesType || cardTypeSorted === guessedTypeSorted) eliminate = true;
                 }
 
-                // 2. Filtrado de Generación con reglas estrictas de datos correctos e incorrectos
                 if (genMatch) {
                     if (cardGen !== guessed.gen) eliminate = true;
                 } else {
-                    // Si la gen es incorrecta, quitar el valor incorrecto exacto y los que no cumplan con la desigualdad (flechas)
                     if (cardGen === guessed.gen) eliminate = true;
                     if (guessed.gen < secret.gen && cardGen <= guessed.gen) eliminate = true;
                     if (guessed.gen > secret.gen && cardGen >= guessed.gen) eliminate = true;
                 }
 
-                // 3. Filtrado de Fase Evolutiva
                 if (stageMatch) {
                     if (cardStage !== guessed.stage) eliminate = true;
                 } else {
                     if (cardStage === guessed.stage) eliminate = true;
                 }
 
-                // 4. Filtrado de Peso
                 if (weightMatch) {
                     if (cardWeight !== guessed.weight) eliminate = true;
                 } else {
@@ -1195,7 +1226,6 @@
                     if (guessed.weight > secret.weight && cardWeight >= guessed.weight) eliminate = true;
                 }
 
-                // 5. Filtrado de Altura
                 if (heightMatch) {
                     if (cardHeight !== guessed.height) eliminate = true;
                 } else {
