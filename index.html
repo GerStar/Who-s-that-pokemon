@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Who's That Pokémon? - Versión Definitiva con Turnos y Tabla Optimizada</title>
+    <title>Who's That Pokémon? - Versión Corregida de Turnos</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- PeerJS para conexión P2P -->
@@ -513,12 +513,14 @@
                 document.getElementById('display-selected-mode').innerText = `Modalidad: ${gameMode === 'classic' ? 'Clásica' : 'Modo Tabla'}`;
             } else if (data.type === 'START_SELECTION') {
                 gameMode = data.mode || gameMode;
+                playersList = data.players || playersList; // Sincronizar lista completa de jugadores
                 initGamePool();
                 buildSecretSelectionGrid();
                 showView('view-select-secret');
             } else if (data.type === 'SET_TURN') {
                 currentTurnPeerId = data.turnId;
                 turnOrder = data.order;
+                if(data.players) playersList = data.players;
                 updateTurnUI();
             } else if (data.type === 'PLAYER_WON') {
                 triggerGameOver(data.winnerName, data.pokemonName);
@@ -554,7 +556,16 @@
             turnOrder = shuffledPlayers.map(p => p.id);
             currentTurnPeerId = turnOrder[0];
 
-            broadcast({ type: 'START_SELECTION', gens: selectedGenerations, mode: gameMode, order: turnOrder, turnId: currentTurnPeerId });
+            const startPayload = { 
+                type: 'START_SELECTION', 
+                gens: selectedGenerations, 
+                mode: gameMode, 
+                order: turnOrder, 
+                turnId: currentTurnPeerId,
+                players: playersList 
+            };
+
+            broadcast(startPayload);
             initGamePool();
             buildSecretSelectionGrid();
             showView('view-select-secret');
@@ -600,7 +611,7 @@
             let nextIndex = (currentIndex + 1) % turnOrder.length;
             currentTurnPeerId = turnOrder[nextIndex];
 
-            const payload = { type: 'SET_TURN', turnId: currentTurnPeerId, order: turnOrder };
+            const payload = { type: 'SET_TURN', turnId: currentTurnPeerId, order: turnOrder, players: playersList };
             if(isHost) {
                 broadcast(payload);
                 updateTurnUI();
@@ -758,7 +769,6 @@
                     const myId = peer ? peer.id : '';
                     if (currentTurnPeerId !== myId) return; // Fuera de turno no interactúa
 
-                    // Si se pulsa con Shift o doble clic, arriesgamos directamente desde la grilla
                     if (confirm(`¿Quieres ARRIESGAR que el Pokémon secreto del rival es ${p.displayName}? (Si fallas, pierdes automáticamente)`)) {
                         submitClassicGuess(p);
                     } else {
@@ -972,7 +982,6 @@
                     const myId = peer ? peer.id : '';
                     if (currentTurnPeerId !== myId) return;
 
-                    // Marcar visualmente la selección actual
                     document.querySelectorAll('.pokemon-card-table').forEach(c => c.classList.remove('ring-4', 'ring-amber-400'));
                     card.classList.add('ring-4', 'ring-amber-400');
                     selectedTableAttempt = p;
@@ -1003,7 +1012,7 @@
             }
 
             const pokemon = selectedTableAttempt;
-            selectedTableAttempt = null; // Reiniciar selección
+            selectedTableAttempt = null;
 
             await enrichPokemonData(pokemon);
             addAttemptToTable('my', pokemon, mySecretPokemon);
@@ -1013,7 +1022,7 @@
             else if(conn && conn.open) conn.send(payload);
 
             applyAutomaticFiltersFromTableGuess(pokemon, mySecretPokemon);
-            endTurn(); // Pasa el turno al siguiente jugador y bloquea
+            endTurn();
         }
 
         function handleOpponentTableGuess(pokemon) {
@@ -1086,7 +1095,6 @@
             }
         }
 
-        // Filtro automático estricto por cada error cometido en la tabla
         function applyAutomaticFiltersFromTableGuess(guessed, secret) {
             const typeMatch = JSON.stringify(guessed.types.sort()) === JSON.stringify(secret.types.sort());
             const genMatch = guessed.gen === secret.gen;
@@ -1103,29 +1111,24 @@
 
                 let eliminate = false;
 
-                // 1. Si el tipo fue incorrecto, eliminamos pokemones que compartan esos tipos erróneos
                 if (!typeMatch) {
                     const sharesType = guessed.types.some(t => cardTypes.includes(t));
                     if (sharesType) eliminate = true;
                 }
 
-                // 2. Si la generación fue incorrecta y no coincide exactamente
                 if (!genMatch && cardGen === guessed.gen) {
                     eliminate = true;
                 }
 
-                // 3. Si la fase fue incorrecta
                 if (!stageMatch && cardStage === guessed.stage) {
                     eliminate = true;
                 }
 
-                // 4. Rangos de peso
                 if (!weightMatch) {
                     if (guessed.weight < secret.weight && cardWeight <= guessed.weight) eliminate = true;
                     if (guessed.weight > secret.weight && cardWeight >= guessed.weight) eliminate = true;
                 }
 
-                // 5. Rangos de altura
                 if (!heightMatch) {
                     if (guessed.height < secret.height && cardHeight <= guessed.height) eliminate = true;
                     if (guessed.height > secret.height && cardHeight >= guessed.height) eliminate = true;
@@ -1143,10 +1146,6 @@
             document.getElementById('result-title').className = isLoss ? "text-3xl font-black text-red-500" : "text-3xl font-black text-emerald-400";
             document.getElementById('result-message').innerText = `El Pokémon secreto era ${pokemonName}.`;
             document.getElementById('modal-result').classList.remove('hidden');
-        }
-    </script>
-</body>
-</html>
         }
     </script>
 </body>
