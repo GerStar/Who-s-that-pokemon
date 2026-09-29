@@ -8,9 +8,9 @@
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-        body { background-color: #0f172a; color: #f1f5f9; min-height: 100vh; display: flex; flex-col; flex-direction: column; align-items: center; justify-content: space-between; padding: 10px; }
+        body { background-color: #0f172a; color: #f1f5f9; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 10px; }
         
-        header { width: 100%; max-width: 1200px; background: rgba(15, 23, 42, 0.9); border-bottom: 1px solid rgba(239, 68, 68, 0.4); padding: 12px 20px; display: flex; justify-content: space-between; items-center; position: sticky; top: 0; z-index: 40; backdrop-filter: blur(8px); border-radius: 0 0 12px 12px; }
+        header { width: 100%; max-width: 1200px; background: rgba(15, 23, 42, 0.9); border-bottom: 1px solid rgba(239, 68, 68, 0.4); padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 40; backdrop-filter: blur(8px); border-radius: 0 0 12px 12px; }
         .logo-area { display: flex; align-items: center; gap: 12px; }
         .pokeball { width: 36px; height: 36px; background: #dc2626; border-radius: 50%; border: 2px solid #0f172a; position: relative; overflow: hidden; box-shadow: 0 0 10px rgba(239, 68, 68, 0.6); }
         .pokeball-top { width: 100%; height: 50%; background: #dc2626; }
@@ -61,14 +61,15 @@
         .pokemon-card.eliminated { display: none !important; }
         .pokemon-card img { width: 80px; height: 80px; object-fit: contain; }
 
+        .filter-active-box { border: 2px solid #fbbf24 !important; background: rgba(251, 191, 36, 0.05); }
+
         .match-success { background: rgba(16, 185, 129, 0.2); border: 1px solid #10b981; color: #34d399; font-weight: bold; padding: 3px 6px; border-radius: 4px; font-size: 10px; }
         .match-fail { background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; color: #f87171; font-weight: bold; padding: 3px 6px; border-radius: 4px; font-size: 10px; }
 
         .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; padding: 15px; z-index: 50; }
-        .table-container { overflow-x: auto; max-height: 300px; }
-        table { width: 100%; text-align: left; font-size: 11px; border-collapse: collapse; white-space: nowrap; }
+        table { width: 100%; text-align: left; font-size: 11px; border-collapse: collapse; }
         th, td { padding: 8px; border-bottom: 1px solid #334155; }
-        th { background: #0f172a; color: #94a3b8; position: sticky; top: 0; }
+        th { background: #0f172a; color: #94a3b8; }
         .disabled-by-turn { opacity: 0.4; pointer-events: none; }
     </style>
 </head>
@@ -192,16 +193,18 @@
             <div id="classic-controls-wrapper" class="card" style="max-width: 100%;">
                 <label style="font-weight: bold; color: #94a3b8; margin-bottom: 8px;">Descarte Rápido por Atributos:</label>
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px; font-size: 11px;">
+                    <!-- Filtro Tipo -->
                     <div id="container-filter-type" style="display: flex; gap: 4px; background: #0f172a; padding: 6px; border-radius: 8px; border: 1px solid #334155;">
                         <select id="filter-type">
                             <option value="">Tipo...</option>
                             <option value="normal">Normal</option><option value="fire">Fuego</option><option value="water">Agua</option><option value="grass">Planta</option><option value="electric">Eléctrico</option><option value="ice">Hielo</option><option value="fighting">Lucha</option><option value="poison">Veneno</option><option value="ground">Tierra</option><option value="flying">Volador</option><option value="psychic">Psíquico</option><option value="bug">Bicho</option><option value="rock">Roca</option><option value="ghost">Fantasma</option><option value="dragon">Dragón</option><option value="steel">Acero</option><option value="fairy">Hada</option>
                         </select>
-                        <button onclick="eliminateByType(true)" style="width: 32px; padding: 4px; background: rgba(153, 27, 27, 0.6);">❌</button>
-                        <button onclick="eliminateByType(false)" style="width: 32px; padding: 4px; background: rgba(6, 95, 70, 0.6);">✅</button>
+                        <button onclick="eliminateByType(true)" style="width: 32px; padding: 4px; background: rgba(153, 27, 27, 0.6);" title="Eliminar si NO es">❌</button>
+                        <button onclick="eliminateByType(false)" style="width: 32px; padding: 4px; background: rgba(6, 95, 70, 0.6);" title="Eliminar si SÍ es">✅</button>
                         <button onclick="undoFilter('type')" style="width: 32px; padding: 4px;" class="secondary">✖</button>
                     </div>
 
+                    <!-- Filtro Color -->
                     <div id="container-filter-color" style="display: flex; gap: 4px; background: #0f172a; padding: 6px; border-radius: 8px; border: 1px solid #334155;">
                         <select id="filter-color">
                             <option value="">Color...</option>
@@ -212,6 +215,7 @@
                         <button onclick="undoFilter('color')" style="width: 32px; padding: 4px;" class="secondary">✖</button>
                     </div>
 
+                    <!-- Filtro Fase -->
                     <div id="container-filter-stage" style="display: flex; gap: 4px; background: #0f172a; padding: 6px; border-radius: 8px; border: 1px solid #334155;">
                         <select id="filter-stage">
                             <option value="">Fase Evolutiva...</option>
@@ -225,6 +229,7 @@
                         <button onclick="undoFilter('stage')" style="width: 32px; padding: 4px;" class="secondary">✖</button>
                     </div>
 
+                    <!-- Filtro Gen -->
                     <div id="container-filter-gen" style="display: flex; gap: 4px; background: #0f172a; padding: 6px; border-radius: 8px; border: 1px solid #334155;">
                         <select id="filter-gen">
                             <option value="">Generación...</option>
@@ -233,6 +238,22 @@
                         <button onclick="eliminateByGen(true)" style="width: 32px; padding: 4px; background: rgba(153, 27, 27, 0.6);">❌</button>
                         <button onclick="eliminateByGen(false)" style="width: 32px; padding: 4px; background: rgba(6, 95, 70, 0.6);">✅</button>
                         <button onclick="undoFilter('gen')" style="width: 32px; padding: 4px;" class="secondary">✖</button>
+                    </div>
+
+                    <!-- Filtro Peso -->
+                    <div id="container-filter-weight" style="display: flex; gap: 4px; background: #0f172a; padding: 6px; border-radius: 8px; border: 1px solid #334155;">
+                        <input type="number" id="filter-weight-val" placeholder="Peso (kg)" step="0.1" style="padding: 4px 8px; font-size: 11px;">
+                        <button onclick="eliminateByWeight('lt')" style="width: 32px; padding: 4px; background: rgba(153, 27, 27, 0.6);" title="Menor que">&lt;</button>
+                        <button onclick="eliminateByWeight('gt')" style="width: 32px; padding: 4px; background: rgba(153, 27, 27, 0.6);" title="Mayor que">&gt;</button>
+                        <button onclick="undoFilter('weight')" style="width: 32px; padding: 4px;" class="secondary">✖</button>
+                    </div>
+
+                    <!-- Filtro Altura -->
+                    <div id="container-filter-height" style="display: flex; gap: 4px; background: #0f172a; padding: 6px; border-radius: 8px; border: 1px solid #334155;">
+                        <input type="number" id="filter-height-val" placeholder="Altura (m)" step="0.1" style="padding: 4px 8px; font-size: 11px;">
+                        <button onclick="eliminateByHeight('lt')" style="width: 32px; padding: 4px; background: rgba(153, 27, 27, 0.6);" title="Menor que">&lt;</button>
+                        <button onclick="eliminateByHeight('gt')" style="width: 32px; padding: 4px; background: rgba(153, 27, 27, 0.6);" title="Mayor que">&gt;</button>
+                        <button onclick="undoFilter('height')" style="width: 32px; padding: 4px;" class="secondary">✖</button>
                     </div>
                 </div>
             </div>
@@ -256,16 +277,17 @@
                 <button id="btn-table-end-turn" onclick="executeTableEndTurn()" style="width: auto; padding: 10px 16px; background: #4f46e5; font-size: 11px;">⏳ Terminar turno (Enviar intento)</button>
             </div>
 
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px;">
+            <!-- Tablas de intentos una debajo de la otra para evitar desbordes -->
+            <div style="display: flex; flex-direction: column; gap: 12px;">
                 <div class="card" style="max-width: 100%;">
                     <h3 style="font-size: 11px; font-weight: bold; color: #fbbf24; margin-bottom: 8px;">📊 Tus Intentos Realizados</h3>
-                    <div class="table-container">
+                    <div>
                         <table>
                             <thead>
                                 <tr><th>Pokémon</th><th>Tipo</th><th>Gen</th><th>Peso</th><th>Altura</th><th>Fase</th></tr>
                             </thead>
                             <tbody id="my-table-attempts-body">
-                                <tr><td colspan="6" style="text-align: center; color: #64748b; padding: 20px;">Sin intentos aún.</td></tr>
+                                <tr><td colspan="6" style="text-align: center; color: #64748b; padding: 15px;">Sin intentos aún.</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -273,13 +295,13 @@
 
                 <div class="card" style="max-width: 100%;">
                     <h3 style="font-size: 11px; font-weight: bold; color: #f87171; margin-bottom: 8px;">👥 Intentos del Oponente</h3>
-                    <div class="table-container">
+                    <div>
                         <table>
                             <thead>
                                 <tr><th>Pokémon</th><th>Tipo</th><th>Gen</th><th>Peso</th><th>Altura</th><th>Fase</th></tr>
                             </thead>
                             <tbody id="opponent-table-attempts-body">
-                                <tr><td colspan="6" style="text-align: center; color: #64748b; padding: 20px;">Esperando al oponente...</td></tr>
+                                <tr><td colspan="6" style="text-align: center; color: #64748b; padding: 15px;">Esperando al oponente...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -302,7 +324,7 @@
             <h3 style="font-size: 12px; font-weight: bold; color: #f87171; margin-bottom: 8px;">Acción de Juego</h3>
             <div id="classic-modal-preview" style="display: flex; align-items: center; gap: 8px; background: #0f172a; padding: 10px; border-radius: 8px; border: 1px solid #334155; text-align: left; margin-bottom: 12px;"></div>
             <div class="space-y">
-                <button id="btn-modal-discard" style="background: #9333ea;">🗑️ Descartar Pokémon</button>
+                <button id="btn-modal-discard" style="background: #9333ea;">🗑️️ Descartar Pokémon</button>
                 <button id="btn-modal-guess" style="background: #fbbf24; color: #0f172a;">⚡ Arriesgar Secreto</button>
                 <button id="btn-modal-close" class="secondary">Cerrar</button>
             </div>
@@ -347,7 +369,7 @@
         let selectedTableAttempt = null;
         let classicSelectedPokemon = null;
 
-        let activeFilters = { type: null, color: null, stage: null, gen: null };
+        let activeFilters = { type: null, color: null, stage: null, gen: null, weight: null, height: null };
 
         const typeTranslations = {
             normal: 'Normal', fire: 'Fuego', water: 'Agua', grass: 'Planta',
@@ -585,7 +607,7 @@
                 
                 const evoRes = await fetch(speciesData.evolution_chain.url);
                 const evoData = await evoRes.json();
-                pokemon.stage = getEvoStage(evoData.chain, pokemon.name);
+                pokemon.stage = getEvoStageCorrect(evoData.chain, pokemon.name);
             } catch(e) {
                 pokemon.types = ['normal'];
                 pokemon.height = 1.0;
@@ -596,19 +618,26 @@
             return pokemon;
         }
 
-        function getEvoStage(chain, targetName) {
-            if (chain.species.name === targetName) {
-                return (chain.evolves_to.length > 0) ? 'Fase 1 (Base)' : 'Única';
-            }
-            for (let child of chain.evolves_to) {
-                if (child.species.name === targetName) {
-                    return (child.evolves_to.length > 0) ? 'Fase 2' : 'Fase 3';
+        // Corrección estricta de fases evolutivas para evitar errores como Houndour/Houndoom
+        function getEvoStageCorrect(chain, targetName) {
+            // Recorre recursivamente el árbol de evolución para hallar la profundidad exacta
+            function searchNode(node, depth) {
+                if (node.species.name === targetName) {
+                    if (depth === 1) {
+                        return node.evolves_to.length > 0 ? 'Fase 1 (Base)' : 'Única';
+                    } else if (depth === 2) {
+                        return node.evolves_to.length > 0 ? 'Fase 2' : 'Fase 3';
+                    } else {
+                        return 'Fase 3';
+                    }
                 }
-                for (let grandchild of child.evolves_to) {
-                    if (grandchild.species.name === targetName) return 'Fase 3';
+                for (let child of node.evolves_to) {
+                    let res = searchNode(child, depth + 1);
+                    if (res) return res;
                 }
+                return null;
             }
-            return 'Única';
+            return searchNode(chain, 1) || 'Única';
         }
 
         async function buildSecretSelectionGrid(filter = "") {
@@ -789,7 +818,13 @@
         function resetBoard() {
             const myId = peer ? peer.id : '';
             if (currentTurnPeerId !== myId) return;
-            activeFilters = { type: null, color: null, stage: null, gen: null };
+            activeFilters = { type: null, color: null, stage: null, gen: null, weight: null, height: null };
+            ['type', 'color', 'stage', 'gen', 'weight', 'height'].forEach(f => {
+                const box = document.getElementById(`container-filter-${f}`);
+                if(box) box.classList.remove('filter-active-box');
+            });
+            document.getElementById('filter-weight-val').value = '';
+            document.getElementById('filter-height-val').value = '';
             document.querySelectorAll('.pokemon-card').forEach(c => c.classList.remove('eliminated'));
             updateRemainingCount();
         }
@@ -801,8 +836,17 @@
         }
 
         function reapplyAllFilters() {
+            ['type', 'color', 'stage', 'gen', 'weight', 'height'].forEach(f => {
+                const box = document.getElementById(`container-filter-${f}`);
+                if (box) {
+                    if (activeFilters[f]) box.classList.add('filter-active-box');
+                    else box.classList.remove('filter-active-box');
+                }
+            });
+
             document.querySelectorAll('.pokemon-card').forEach(card => {
                 let shouldEliminate = false;
+                
                 if (activeFilters.type) {
                     const types = JSON.parse(card.dataset.types || '[]');
                     const has = types.includes(activeFilters.type.val);
@@ -823,6 +867,19 @@
                     const matches = (gen === parseInt(activeFilters.gen.val));
                     if (activeFilters.gen.isTarget ? matches : !matches) shouldEliminate = true;
                 }
+                if (activeFilters.weight && !shouldEliminate) {
+                    const w = parseFloat(card.dataset.weight);
+                    const targetW = activeFilters.weight.val;
+                    if (activeFilters.weight.op === 'lt' && !(w < targetW)) shouldEliminate = true;
+                    if (activeFilters.weight.op === 'gt' && !(w > targetW)) shouldEliminate = true;
+                }
+                if (activeFilters.height && !shouldEliminate) {
+                    const h = parseFloat(card.dataset.height);
+                    const targetH = activeFilters.height.val;
+                    if (activeFilters.height.op === 'lt' && !(h < targetH)) shouldEliminate = true;
+                    if (activeFilters.height.op === 'gt' && !(h > targetH)) shouldEliminate = true;
+                }
+
                 if (shouldEliminate) card.classList.add('eliminated');
             });
             updateRemainingCount();
@@ -852,12 +909,28 @@
             activeFilters.gen = { val, isTarget: isTargetGen };
             reapplyAllFilters();
         }
+        function eliminateByWeight(op) {
+            const val = parseFloat(document.getElementById('filter-weight-val').value);
+            if(isNaN(val)) { alert("Ingresa un valor de peso válido."); return; }
+            activeFilters.weight = { val, op };
+            reapplyAllFilters();
+        }
+        function eliminateByHeight(op) {
+            const val = parseFloat(document.getElementById('filter-height-val').value);
+            if(isNaN(val)) { alert("Ingresa un valor de altura válido."); return; }
+            activeFilters.height = { val, op };
+            reapplyAllFilters();
+        }
+
         function undoFilter(filterName) {
             activeFilters[filterName] = null;
             if(filterName === 'type') document.getElementById('filter-type').value = "";
             if(filterName === 'color') document.getElementById('filter-color').value = "";
             if(filterName === 'stage') document.getElementById('filter-stage').value = "";
             if(filterName === 'gen') document.getElementById('filter-gen').value = "";
+            if(filterName === 'weight') document.getElementById('filter-weight-val').value = "";
+            if(filterName === 'height') document.getElementById('filter-height-val').value = "";
+            
             document.querySelectorAll('.pokemon-card').forEach(c => c.classList.remove('eliminated'));
             reapplyAllFilters();
         }
