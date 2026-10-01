@@ -277,7 +277,6 @@
                 <button id="btn-table-end-turn" onclick="executeTableEndTurn()" style="width: auto; padding: 10px 16px; background: #4f46e5; font-size: 11px;">⏳ Terminar turno (Enviar intento)</button>
             </div>
 
-            <!-- Tablas de intentos una debajo de la otra para evitar desbordes -->
             <div style="display: flex; flex-direction: column; gap: 12px;">
                 <div class="card" style="max-width: 100%;">
                     <h3 style="font-size: 11px; font-weight: bold; color: #fbbf24; margin-bottom: 8px;">📊 Tus Intentos Realizados</h3>
@@ -324,7 +323,7 @@
             <h3 style="font-size: 12px; font-weight: bold; color: #f87171; margin-bottom: 8px;">Acción de Juego</h3>
             <div id="classic-modal-preview" style="display: flex; align-items: center; gap: 8px; background: #0f172a; padding: 10px; border-radius: 8px; border: 1px solid #334155; text-align: left; margin-bottom: 12px;"></div>
             <div class="space-y">
-                <button id="btn-modal-discard" style="background: #9333ea;">🗑️️ Descartar Pokémon</button>
+                <button id="btn-modal-discard" style="background: #9333ea;">🗑 Descartar Pokémon</button>
                 <button id="btn-modal-guess" style="background: #fbbf24; color: #0f172a;">⚡ Arriesgar Secreto</button>
                 <button id="btn-modal-close" class="secondary">Cerrar</button>
             </div>
@@ -352,6 +351,7 @@
     <script>
         let allPokemon = [];
         let activePokemonPool = [];
+        let pokemonDetailsCache = {}; // Caché global para evitar llamadas redundantes a la PokeAPI
         let peer = null;
         let conn = null;
         let connections = [];
@@ -594,6 +594,10 @@
 
         async function enrichPokemonData(pokemon) {
             if (pokemon.types) return pokemon;
+            if (pokemonDetailsCache[pokemon.id]) {
+                Object.assign(pokemon, pokemonDetailsCache[pokemon.id]);
+                return pokemon;
+            }
             try {
                 const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${pokemon.id}`);
                 const data = await res.json();
@@ -608,6 +612,14 @@
                 const evoRes = await fetch(speciesData.evolution_chain.url);
                 const evoData = await evoRes.json();
                 pokemon.stage = getEvoStageCorrect(evoData.chain, pokemon.name);
+
+                pokemonDetailsCache[pokemon.id] = {
+                    types: pokemon.types,
+                    height: pokemon.height,
+                    weight: pokemon.weight,
+                    color: pokemon.color,
+                    stage: pokemon.stage
+                };
             } catch(e) {
                 pokemon.types = ['normal'];
                 pokemon.height = 1.0;
@@ -618,9 +630,7 @@
             return pokemon;
         }
 
-        // Corrección estricta de fases evolutivas para evitar errores como Houndour/Houndoom
         function getEvoStageCorrect(chain, targetName) {
-            // Recorre recursivamente el árbol de evolución para hallar la profundidad exacta
             function searchNode(node, depth) {
                 if (node.species.name === targetName) {
                     if (depth === 1) {
@@ -640,15 +650,27 @@
             return searchNode(chain, 1) || 'Única';
         }
 
+        // Carga en bloques asíncronos concurrentes para asegurar que se muestren TODOS los Pokémon sin colgar la API
+        async function renderGridInChunks(gridElement, filteredList, renderCardCallback) {
+            gridElement.innerHTML = '';
+            const chunkSize = 30;
+            for (let i = 0; i < filteredList.length; i += chunkSize) {
+                const chunk = filteredList.slice(i, i + chunkSize);
+                await Promise.all(chunk.map(async (p) => {
+                    await enrichPokemonData(p);
+                    const card = renderCardCallback(p);
+                    gridElement.appendChild(card);
+                }));
+            }
+        }
+
         async function buildSecretSelectionGrid(filter = "") {
             const grid = document.getElementById('secret-grid');
             grid.innerHTML = '<div style="grid-column: span full; text-align: center; font-size: 11px; color: #94a3b8; padding: 20px;">Cargando Pokémon...</div>';
             
             const filtered = activePokemonPool.filter(p => p.name.includes(filter.toLowerCase()));
-            grid.innerHTML = '';
-
-            for (let p of filtered) {
-                await enrichPokemonData(p);
+            
+            await renderGridInChunks(grid, filtered, (p) => {
                 const card = document.createElement('div');
                 card.className = "pokemon-card";
                 const translatedTypes = p.types.map(t => typeTranslations[t] || t).join(', ');
@@ -663,8 +685,8 @@
                     </div>
                 `;
                 card.onclick = () => selectMySecret(p);
-                grid.appendChild(card);
-            }
+                return card;
+            });
         }
 
         function filterSecretSelection() {
@@ -734,10 +756,8 @@
             grid.innerHTML = '<div style="grid-column: span full; text-align: center; font-size: 11px; color: #94a3b8; padding: 20px;">Cargando tablero...</div>';
 
             const filtered = activePokemonPool.filter(p => p.name.includes(filter.toLowerCase()));
-            grid.innerHTML = '';
-
-            for (let p of filtered) {
-                await enrichPokemonData(p);
+            
+            await renderGridInChunks(grid, filtered, (p) => {
                 const card = document.createElement('div');
                 card.className = "pokemon-card";
                 card.id = `board-card-${p.id}`;
@@ -771,8 +791,9 @@
                     if (currentTurnPeerId !== myId) return; 
                     openClassicActionModal(p);
                 };
-                grid.appendChild(card);
-            }
+                return card;
+            });
+
             reapplyAllFilters();
             updateRemainingCount();
         }
@@ -832,7 +853,7 @@
         function updateRemainingCount() {
             const total = document.querySelectorAll('.pokemon-card').length;
             const eliminated = document.querySelectorAll('.pokemon-card.eliminated').length;
-            document.getElementById('remaining-count').innerText = total - eliminated;
+            document.getElementById('remaining-count').innerText = Math.max(0, total - eliminated);
         }
 
         function reapplyAllFilters() {
@@ -844,7 +865,16 @@
                 }
             });
 
+            // Verificamos si hay al menos un filtro activo real
+            const hasActiveFilters = Object.values(activeFilters).some(f => f !== null);
+
             document.querySelectorAll('.pokemon-card').forEach(card => {
+                if (!hasActiveFilters) {
+                    // Si no hay ningún filtro activo, asegurémonos de que no queden eliminados por error al limpiar
+                    card.classList.remove('eliminated');
+                    return;
+                }
+
                 let shouldEliminate = false;
                 
                 if (activeFilters.type) {
@@ -853,8 +883,9 @@
                     if (activeFilters.type.isTarget ? has : !has) shouldEliminate = true;
                 }
                 if (activeFilters.color && !shouldEliminate) {
-                    const color = card.dataset.color;
-                    const matches = (color === activeFilters.color.val);
+                    const color = (card.dataset.color || "").toLowerCase().trim();
+                    const targetColor = activeFilters.color.val.toLowerCase().trim();
+                    const matches = (color === targetColor);
                     if (activeFilters.color.isTarget ? matches : !matches) shouldEliminate = true;
                 }
                 if (activeFilters.stage && !shouldEliminate) {
@@ -881,6 +912,7 @@
                 }
 
                 if (shouldEliminate) card.classList.add('eliminated');
+                else card.classList.remove('eliminated');
             });
             updateRemainingCount();
         }
@@ -931,7 +963,6 @@
             if(filterName === 'weight') document.getElementById('filter-weight-val').value = "";
             if(filterName === 'height') document.getElementById('filter-height-val').value = "";
             
-            document.querySelectorAll('.pokemon-card').forEach(c => c.classList.remove('eliminated'));
             reapplyAllFilters();
         }
 
@@ -956,10 +987,8 @@
             grid.innerHTML = '<div style="grid-column: span full; text-align: center; font-size: 11px; color: #94a3b8; padding: 20px;">Cargando candidatos...</div>';
 
             const filtered = activePokemonPool.filter(p => p.name.includes(filter.toLowerCase()));
-            grid.innerHTML = '';
-
-            for (let p of filtered) {
-                await enrichPokemonData(p);
+            
+            await renderGridInChunks(grid, filtered, (p) => {
                 const card = document.createElement('div');
                 card.className = "pokemon-card";
                 card.dataset.id = p.id;
@@ -994,9 +1023,9 @@
                     card.style.border = "2px solid #fbbf24";
                     selectedTableAttempt = p;
                 };
+                return card;
+            });
 
-                grid.appendChild(card);
-            }
             updateTableRemainingCount();
         }
 
@@ -1007,7 +1036,7 @@
         function updateTableRemainingCount() {
             const total = document.querySelectorAll('#table-game-board-grid .pokemon-card').length;
             const eliminated = document.querySelectorAll('#table-game-board-grid .pokemon-card.eliminated').length;
-            document.getElementById('table-remaining-count').innerText = total - eliminated;
+            document.getElementById('table-remaining-count').innerText = Math.max(0, total - eliminated);
         }
 
         async function executeTableEndTurn() {
