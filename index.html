@@ -399,6 +399,7 @@
 
         async function loadPokedex() {
             try {
+                // MODIFICACIÓN 1: Límite exacto de 1025 Pokémon
                 const response = await fetch('https://pokeapi.co/api/v2/pokemon?limit=1025&offset=0');
                 const data = await response.json();
                 allPokemon = data.results.map((p, index) => {
@@ -756,49 +757,46 @@
 
             const filtered = activePokemonPool.filter(p => p.name.includes(filter.toLowerCase()));
             
-            grid.innerHTML = ''; // Limpieza absoluta antes de renderizar por lotes
-            for (let i = 0; i < filtered.length; i += 30) {
-                const chunk = filtered.slice(i, i + 30);
-                await Promise.all(chunk.map(async (p) => {
-                    await enrichPokemonData(p);
-                    const card = document.createElement('div');
-                    card.className = "pokemon-card";
-                    card.id = `board-card-${p.id}`;
-                    card.dataset.id = p.id;
-                    card.dataset.types = JSON.stringify(p.types);
-                    card.dataset.weight = p.weight;
-                    card.dataset.height = p.height;
-                    card.dataset.stage = p.stage;
-                    card.dataset.gen = p.gen;
-                    card.dataset.color = p.color;
-                    
-                    const colorEsp = colorTranslations[p.color] || p.color;
-                    const translatedTypes = p.types.map(t => typeTranslations[t] || t).join(' / ');
+            await renderGridInChunks(grid, filtered, (p) => {
+                const card = document.createElement('div');
+                card.className = "pokemon-card";
+                card.id = `board-card-${p.id}`;
+                card.dataset.id = p.id;
+                card.dataset.types = JSON.stringify(p.types);
+                card.dataset.weight = p.weight;
+                card.dataset.height = p.height;
+                card.dataset.stage = p.stage;
+                card.dataset.gen = p.gen;
+                card.dataset.color = p.color;
+                
+                const colorEsp = colorTranslations[p.color] || p.color;
+                const translatedTypes = p.types.map(t => typeTranslations[t] || t).join(' / ');
 
-                    card.innerHTML = `
-                        <div style="width: 100%; display: flex; justify-content: space-between; font-size: 9px; color: #64748b; font-family: monospace;">
-                            <span>#${String(p.id).padStart(3, '0')}</span><span>Gen ${p.gen}</span>
+                // MODIFICACIÓN 2: Se agregó la altura (📏) dentro de los datos visibles de la tarjeta
+                card.innerHTML = `
+                    <div style="width: 100%; display: flex; justify-content: space-between; font-size: 9px; color: #64748b; font-family: monospace;">
+                        <span>#${String(p.id).padStart(3, '0')}</span><span>Gen ${p.gen}</span>
+                    </div>
+                    <img src="${p.sprite}">
+                    <div style="text-align: center; width: 100%;">
+                        <span style="font-weight: bold; font-size: 11px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${p.displayName}</span>
+                        <div style="font-size: 8px; color: #94a3b8; line-height: 1.1; margin-top: 2px;">
+                            <span style="color: #f87171; font-weight: bold;">${translatedTypes}</span> | 🎨 ${colorEsp}<br>
+                            <span>${p.stage}</span> | ⚖️ ${p.weight}kg | 📏 ${p.height}m
                         </div>
-                        <img src="${p.sprite}">
-                        <div style="text-align: center; width: 100%;">
-                            <span style="font-weight: bold; font-size: 11px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${p.displayName}</span>
-                            <div style="font-size: 8px; color: #94a3b8; line-height: 1.1; margin-top: 2px;">
-                                <span style="color: #f87171; font-weight: bold;">${translatedTypes}</span> | 🎨 ${colorEsp}<br>
-                                <span>${p.stage}</span> | ⚖️ ${p.weight}kg | 📏 ${p.height}m
-                            </div>
-                        </div>
-                    `;
-                    
-                    card.onclick = () => {
-                        const myId = peer ? peer.id : '';
-                        if (currentTurnPeerId !== myId) return; 
-                        openClassicActionModal(p);
-                    };
-                    grid.appendChild(card);
-                }));
-            }
+                    </div>
+                `;
+                
+                card.onclick = () => {
+                    const myId = peer ? peer.id : '';
+                    if (currentTurnPeerId !== myId) return; 
+                    openClassicActionModal(p);
+                };
+                return card;
+            });
 
             reapplyAllFilters();
+            updateRemainingCount();
         }
 
         function openClassicActionModal(pokemon) {
@@ -854,18 +852,9 @@
         }
 
         function updateRemainingCount() {
-            // CORRECCIÓN CLAVE: Se calcula directamente en base al pool activo menos los descartados en el DOM
-            const filterText = (document.getElementById('search-board-pokemon')?.value || "").toLowerCase();
-            const matchingPool = activePokemonPool.filter(p => p.name.includes(filterText));
-            
-            let visibleCount = 0;
-            matchingPool.forEach(p => {
-                const card = document.getElementById(`board-card-${p.id}`);
-                if (card && !card.classList.contains('eliminated')) {
-                    visibleCount++;
-                }
-            });
-            document.getElementById('remaining-count').innerText = visibleCount;
+            const total = document.querySelectorAll('.pokemon-card').length;
+            const eliminated = document.querySelectorAll('.pokemon-card.eliminated').length;
+            document.getElementById('remaining-count').innerText = Math.max(0, total - eliminated);
         }
 
         function reapplyAllFilters() {
@@ -998,48 +987,43 @@
 
             const filtered = activePokemonPool.filter(p => p.name.includes(filter.toLowerCase()));
             
-            grid.innerHTML = '';
-            for (let i = 0; i < filtered.length; i += 30) {
-                const chunk = filtered.slice(i, i + 30);
-                await Promise.all(chunk.map(async (p) => {
-                    await enrichPokemonData(p);
-                    const card = document.createElement('div');
-                    card.className = "pokemon-card";
-                    card.dataset.id = p.id;
-                    card.dataset.types = JSON.stringify(p.types);
-                    card.dataset.weight = p.weight;
-                    card.dataset.height = p.height;
-                    card.dataset.stage = p.stage;
-                    card.dataset.gen = p.gen;
-                    card.dataset.color = p.color;
-                    
-                    const colorEsp = colorTranslations[p.color] || p.color;
-                    const translatedTypes = p.types.map(t => typeTranslations[t] || t).join(' / ');
+            await renderGridInChunks(grid, filtered, (p) => {
+                const card = document.createElement('div');
+                card.className = "pokemon-card";
+                card.dataset.id = p.id;
+                card.dataset.types = JSON.stringify(p.types);
+                card.dataset.weight = p.weight;
+                card.dataset.height = p.height;
+                card.dataset.stage = p.stage;
+                card.dataset.gen = p.gen;
+                card.dataset.color = p.color;
+                
+                const colorEsp = colorTranslations[p.color] || p.color;
+                const translatedTypes = p.types.map(t => typeTranslations[t] || t).join(' / ');
 
-                    card.innerHTML = `
-                        <div style="width: 100%; display: flex; justify-content: space-between; font-size: 9px; color: #64748b; font-family: monospace;">
-                            <span>#${String(p.id).padStart(3, '0')}</span><span>Gen ${p.gen}</span>
+                card.innerHTML = `
+                    <div style="width: 100%; display: flex; justify-content: space-between; font-size: 9px; color: #64748b; font-family: monospace;">
+                        <span>#${String(p.id).padStart(3, '0')}</span><span>Gen ${p.gen}</span>
+                    </div>
+                    <img src="${p.sprite}">
+                    <div style="text-align: center; width: 100%;">
+                        <span style="font-weight: bold; font-size: 11px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${p.displayName}</span>
+                        <div style="font-size: 8px; color: #94a3b8; line-height: 1.1; margin-top: 2px;">
+                            <span style="color: #f87171; font-weight: bold;">${translatedTypes}</span> | 🎨 ${colorEsp}<br>
+                            <span>${p.stage}</span> | ⚖️ ${p.weight}kg | 📏 ${p.height}m
                         </div>
-                        <img src="${p.sprite}">
-                        <div style="text-align: center; width: 100%;">
-                            <span style="font-weight: bold; font-size: 11px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${p.displayName}</span>
-                            <div style="font-size: 8px; color: #94a3b8; line-height: 1.1; margin-top: 2px;">
-                                <span style="color: #f87171; font-weight: bold;">${translatedTypes}</span> | 🎨 ${colorEsp}<br>
-                                <span>${p.stage}</span> | ⚖️ ${p.weight}kg | 📏 ${p.height}m
-                            </div>
-                        </div>
-                    `;
+                    </div>
+                `;
 
-                    card.onclick = () => {
-                        const myId = peer ? peer.id : '';
-                        if (currentTurnPeerId !== myId) return;
-                        document.querySelectorAll('#table-game-board-grid .pokemon-card').forEach(c => c.style.border = "1px solid #334155");
-                        card.style.border = "2px solid #fbbf24";
-                        selectedTableAttempt = p;
-                    };
-                    grid.appendChild(card);
-                }));
-            }
+                card.onclick = () => {
+                    const myId = peer ? peer.id : '';
+                    if (currentTurnPeerId !== myId) return;
+                    document.querySelectorAll('#table-game-board-grid .pokemon-card').forEach(c => c.style.border = "1px solid #334155");
+                    card.style.border = "2px solid #fbbf24";
+                    selectedTableAttempt = p;
+                };
+                return card;
+            });
 
             updateTableRemainingCount();
         }
@@ -1049,17 +1033,9 @@
         }
 
         function updateTableRemainingCount() {
-            const filterText = (document.getElementById('search-table-board')?.value || "").toLowerCase();
-            const matchingPool = activePokemonPool.filter(p => p.name.includes(filterText));
-            
-            let visibleCount = 0;
-            matchingPool.forEach(p => {
-                const card = document.querySelector(`#table-game-board-grid [data-id="${p.id}"]`);
-                if (card && !card.classList.contains('eliminated')) {
-                    visibleCount++;
-                }
-            });
-            document.getElementById('table-remaining-count').innerText = visibleCount;
+            const total = document.querySelectorAll('#table-game-board-grid .pokemon-card').length;
+            const eliminated = document.querySelectorAll('#table-game-board-grid .pokemon-card.eliminated').length;
+            document.getElementById('table-remaining-count').innerText = Math.max(0, total - eliminated);
         }
 
         async function executeTableEndTurn() {
